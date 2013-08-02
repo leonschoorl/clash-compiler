@@ -35,8 +35,21 @@
 <a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h1>
 
 <ol>
-<li>Download GHC-HEAD (See <a href="#GHC-HEAD%20(type-nats%20branch">GHC-HEAD (type-nats branch)</a>)</li>
-<li>Unpack the tarball</li>
+<li>Download GHC-HEAD for your platform (See <a href="#ghc-head-type-nats-branch">GHC-HEAD (type-nats branch)</a>)</li>
+<li>Unpack (<code>tar xjf</code>) the tarball and <code>cd</code> to the directory </li>
+<li>Run <code>./configure --prefix=&lt;INSTALLDIR&gt;</code>
+</li>
+<li>Add the <code>bin</code> directory to your path: <code>PATH=$PATH:&lt;INSTALLDIR&gt;/bin</code>
+</li>
+<li>Download the CλaSH binary for your platform (See <a href="#c%CE%BBash-binaries">CλaSH Binaries</a>) to <code>$INSTALLDIR/bin</code>
+</li>
+<li>Download the CλaSH primitives (See <a href="#c%CE%BBash-primitive-definitions">CλaSH Primitive Definitions</a>)</li>
+<li>Unpack (<code>tar xjf</code>) the tar ball to <code>&lt;PRIMDIR&gt;</code>
+</li>
+<li>Add a new environment variable (<code>CLASH_PRIMDIR</code>) pointing to the <code>&lt;PRIMDIR&gt;</code> directory: <code>export CLASH_PRIMDIR="&lt;PRIMDIR&gt;"</code>
+</li>
+<li>Verify installation by running: <code>clash-&lt;PLATFORM&gt; --interactive</code>
+</li>
 </ol><h1>
 <a name="downloads" class="anchor" href="#downloads"><span class="octicon octicon-link"></span></a>Downloads</h1>
 
