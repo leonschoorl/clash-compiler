@@ -39,16 +39,25 @@
 <li>Unpack (<code>tar xjf</code>) the tarball and <code>cd</code> to the directory </li>
 <li>Run <code>./configure --prefix=&lt;INSTALLDIR&gt;</code>
 </li>
-<li>Add the <code>bin</code> directory to your path: <code>PATH=$PATH:&lt;INSTALLDIR&gt;/bin</code>
+<li>Add the <code>bin</code> directory to your path: <code>PATH=&lt;INSTALLDIR&gt;/bin:$PATH</code>
 </li>
-<li>Download the CλaSH binary for your platform (See <a href="#c%CE%BBash-binaries">CλaSH Binaries</a>) to <code>$INSTALLDIR/bin</code>
+<li>Download the CλaSH binary for your platform (See <a href="#c%CE%BBash-binaries">CλaSH Binaries</a>) to <code>$INSTALLDIR/bin</code> and rename it to <code>clash</code>
 </li>
 <li>Download the CλaSH primitives (See <a href="#c%CE%BBash-primitive-definitions">CλaSH Primitive Definitions</a>)</li>
-<li>Unpack (<code>tar xjf</code>) the tar ball to <code>&lt;PRIMDIR&gt;</code>
+<li>Unpack (<code>tar xzf</code>) the primitives tarball to <code>&lt;PRIMDIR&gt;</code>
 </li>
 <li>Add a new environment variable (<code>CLASH_PRIMDIR</code>) pointing to the <code>&lt;PRIMDIR&gt;</code> directory: <code>export CLASH_PRIMDIR="&lt;PRIMDIR&gt;"</code>
 </li>
-<li>Verify installation by running: <code>clash-&lt;PLATFORM&gt; --interactive</code>
+<li>Verify everything is working by:
+
+<ul>
+<li>Downloading the FIR.hs example</li>
+<li>Running <code>clash --interactive FIR.hs</code>
+</li>
+<li>Executing the <code>:vhdl</code> command, leave the interpreter using <code>:q</code>
+</li>
+<li>Examine the VHDL code in the <code>vhdl</code> directory</li>
+</ul>
 </li>
 </ol><h1>
 <a name="downloads" class="anchor" href="#downloads"><span class="octicon octicon-link"></span></a>Downloads</h1>
