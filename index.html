@@ -41,7 +41,7 @@
 <h1>
 <a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h1>
 
-<p>Because the <a href="https://github.com/ghc/ghc/tree/type-nats"><code>type-nats</code> branch</a> is not merged into mainline <a href="http://haskell.org/ghc"><strong>GHC</strong></a>, installation of <strong>CλaSH</strong> is sadly more involved than a simple <code>cabal install clash</code>.
+<p>Because the <code>type-nats</code> branch is only merged into the development branch of <a href="http://haskell.org/ghc"><strong>GHC</strong></a>, installation of <strong>CλaSH</strong> is sadly more involved than a simple <code>cabal install clash</code>.
 The instructions for the installation are found below; these instructions assume that no previous versions of <strong>GHC</strong> are present on the system.
 If you want to run <strong>CλaSH</strong> alongside an existing installation of <strong>GHC</strong>, you should investigate solutions such as <a href="http://www.gnu.org/software/stow/%E2%80%8E">stow</a> or <a href="https://github.com/spl/multi-ghc">multi-ghc</a>.</p>
 
@@ -49,7 +49,7 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <li>Install <strong>GHC-HEAD</strong>
 
 <ul>
-<li>Download GHC-HEAD for your platform (See <a href="#ghc-head-type-nats-branch">GHC-HEAD (type-nats branch)</a>)</li>
+<li>Download GHC-HEAD for your platform (See <a href="#ghc-head">GHC-HEAD</a>)</li>
 <li>Unpack (<code>tar xjf</code>) the tarball and <code>cd</code> to the directory </li>
 <li>Run <code>./configure --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the directory you want to install GHC</li>
 <li>Add the <code>bin</code> directory of <strong>GHC</strong> to your path: <code>PATH=&lt;INSTALLDIR&gt;/bin:$PATH</code>
@@ -60,6 +60,8 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 
 <ul>
 <li>Download the CλaSH binary for your platform (See <a href="#c%CE%BBash-binaries">CλaSH Binaries</a>) to <code>$INSTALLDIR/bin</code> and rename it to <code>clash</code>
+</li>
+<li>Ensure that it is executable: <code>chmod +x &lt;INSTALLDIR&gt;/bin/clash</code>
 </li>
 </ul>
 </li>
@@ -115,7 +117,7 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <h4>
 <a name="c%CE%BBash-binaries" class="anchor" href="#c%CE%BBash-binaries"><span class="octicon octicon-link"></span></a>CλaSH Binaries</h4>
 
-<p><a href="https://www.dropbox.com/s/qiqf0ey6t25cu7m/clash-linux-20130917">Linux (X86_64)</a> (release date: 2013/09/17)<br><a href="https://www.dropbox.com/s/9qvs4ggtw92lcm8/clash-darwin-20130917">OS X (X86_64)</a> (release date: 2013/09/17)</p>
+<p><a href="https://www.dropbox.com/s/9fhvv1var3rkamr/clash-linux">Linux (X86_64)</a> (release date: 2013/10/03)<br><a href="https://www.dropbox.com/s/g5ery3cclv52mnn/clash-darwin">OS X (X86_64)</a> (release date: 2013/10/03)</p>
 
 <h3>
 <a name="c%CE%BBash-prelude" class="anchor" href="#c%CE%BBash-prelude"><span class="octicon octicon-link"></span></a>CλaSH Prelude</h3>
@@ -125,12 +127,12 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <h3>
 <a name="c%CE%BBash-primitive-definitions" class="anchor" href="#c%CE%BBash-primitive-definitions"><span class="octicon octicon-link"></span></a>CλaSH Primitive Definitions</h3>
 
-<p><a href="https://www.dropbox.com/s/5of7thq8rny2zi6/primitives-20130917.tar.gz">primitives-20130917.tar.gz</a> (release date: 2013/09/17)</p>
+<p><a href="https://www.dropbox.com/s/b1iq0u9a19dnnzm/primitives.tar.gz">primitives.tar.gz</a> (release date: 2013/10/03)</p>
 
 <h3>
-<a name="ghc-head-type-nats-branch" class="anchor" href="#ghc-head-type-nats-branch"><span class="octicon octicon-link"></span></a>GHC-HEAD (type-nats branch)</h3>
+<a name="ghc-head" class="anchor" href="#ghc-head"><span class="octicon octicon-link"></span></a>GHC-HEAD</h3>
 
-<p><a href="https://www.dropbox.com/s/78rl8wg32c8ie8o/ghc-7.7.20130626-x86_64-unknown-linux.tar.bz2">ghc-7.7.20130626-x86_64-unknown-linux.tar.bz2</a><br><a href="https://www.dropbox.com/s/d37rij0dnvjiqqy/ghc-7.7.20130915-x86_64-apple-darwin.tar.bz2">ghc-7.7.20130915-x86_64-apple-darwin.tar.bz2</a>  </p>
+<p><a href="https://www.dropbox.com/s/oxl8b3g044fxkpc/ghc-7.7.20131001-x86_64-unknown-linux.tar.bz2">ghc-7.7.20131001-x86_64-unknown-linux.tar.bz2</a><br><a href="https://www.dropbox.com/s/8nhqk4uvpoy2o2m/ghc-7.7.20131001-x86_64-apple-darwin.tar.bz2">ghc-7.7.20131001-x86_64-apple-darwin.tar.bz2</a>  </p>
 
 <h3>
 <a name="th-lift-package" class="anchor" href="#th-lift-package"><span class="octicon octicon-link"></span></a>TH-Lift package</h3>
