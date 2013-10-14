@@ -70,11 +70,13 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <ul>
 <li>Download the TH-Lift library (See <a href="#th-lift-package">TH-Lift package</a>)</li>
 <li>Unpack (<code>tar xzf</code> / <code>unzip</code>) the archive and <code>cd</code> to the directory</li>
-<li>Run: <code>runhaskell Setup.hs configure --global --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the location you installed <strong>GHC</strong>
+<li>Run: <code>ghc --make Setup.hs</code>
 </li>
-<li>Run: <code>runhaskell Setup.hs build</code>
+<li>Run: <code>./Setup configure --global --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the location you installed <strong>GHC</strong>
 </li>
-<li>Run: <code>runhaskell Setup.hs install</code>
+<li>Run: <code>./Setup build</code>
+</li>
+<li>Run: <code>./Setup install</code>
 </li>
 </ul>
 </li>
@@ -83,11 +85,13 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <ul>
 <li>Download the CλaSH prelude (See <a href="#c%CE%BBash-prelude">CλaSH Prelude</a>)</li>
 <li>Unpack (<code>tar xzf</code> / <code>unzip</code>) the archive and <code>cd</code> to the directory</li>
-<li>Run: <code>runhaskell Setup.hs configure --global --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the location you installed <strong>GHC</strong>
+<li>Run: <code>ghc --make Setup.hs</code>
 </li>
-<li>Run: <code>runhaskell Setup.hs build</code>
+<li>Run: <code>./Setup configure --global --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the location you installed <strong>GHC</strong>
 </li>
-<li>Run: <code>runhaskell Setup.hs install</code>
+<li>Run: <code>./Setup build</code>
+</li>
+<li>Run: <code>./Setup install</code>
 </li>
 </ul>
 </li>
