@@ -41,17 +41,19 @@
 <h1>
 <a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h1>
 
-<p>Because the <code>type-nats</code> branch is only merged into the development branch of <a href="http://haskell.org/ghc"><strong>GHC</strong></a>, installation of <strong>CλaSH</strong> is sadly more involved than a simple <code>cabal install clash</code>.
+<p>Because the constraint solver for type-level naturals is only included in the upcoming 7.8 release of <a href="http://haskell.org/ghc"><strong>GHC</strong></a>, installation of <strong>CλaSH</strong> is sadly more involved than a simple <code>cabal install clash</code>.
 The instructions for the installation are found below; these instructions assume that no previous versions of <strong>GHC</strong> are present on the system.
 If you want to run <strong>CλaSH</strong> alongside an existing installation of <strong>GHC</strong>, you should investigate solutions such as <a href="http://www.gnu.org/software/stow/%E2%80%8E">stow</a> or <a href="https://github.com/spl/multi-ghc">multi-ghc</a>.</p>
 
 <ol>
-<li>Install <strong>GHC-HEAD</strong>
+<li>Install <strong>GHC 7.8-rc1</strong>
 
 <ul>
-<li>Download GHC-HEAD for your platform (See <a href="#ghc-head">GHC-HEAD</a>)</li>
+<li>Download GHC 7.8-rc1 for your platform (See <a href="#ghc_7.8-rc">GHC 7.8-rc1</a>)</li>
 <li>Unpack (<code>tar xjf</code>) the tarball and <code>cd</code> to the directory </li>
 <li>Run <code>./configure --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the directory you want to install GHC</li>
+<li>Run <code>make install</code>
+</li>
 <li>Add the <code>bin</code> directory of <strong>GHC</strong> to your path: <code>PATH=&lt;INSTALLDIR&gt;/bin:$PATH</code>
 </li>
 </ul>
@@ -121,7 +123,7 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <h4>
 <a name="c%CE%BBash-binaries" class="anchor" href="#c%CE%BBash-binaries"><span class="octicon octicon-link"></span></a>CλaSH Binaries</h4>
 
-<p><a href="https://www.dropbox.com/s/9fhvv1var3rkamr/clash-linux">Linux (X86_64)</a> (release date: 2013/11/25)<br><a href="https://www.dropbox.com/s/g5ery3cclv52mnn/clash-darwin">OS X (X86_64)</a> (release date: 2013/10/03)</p>
+<p><a href="https://www.dropbox.com/s/9fhvv1var3rkamr/clash-linux">Linux (X86_64)</a> (release date: 2014/02/18)<br><a href="https://www.dropbox.com/s/g5ery3cclv52mnn/clash-darwin">OS X (X86_64)</a> (release date: 2014/02/18)</p>
 
 <h3>
 <a name="c%CE%BBash-prelude" class="anchor" href="#c%CE%BBash-prelude"><span class="octicon octicon-link"></span></a>CλaSH Prelude</h3>
@@ -131,17 +133,17 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <h3>
 <a name="c%CE%BBash-primitive-definitions" class="anchor" href="#c%CE%BBash-primitive-definitions"><span class="octicon octicon-link"></span></a>CλaSH Primitive Definitions</h3>
 
-<p><a href="https://www.dropbox.com/s/b1iq0u9a19dnnzm/primitives.tar.gz">primitives.tar.gz</a> (release date: 2013/10/14)</p>
+<p><a href="https://www.dropbox.com/s/b1iq0u9a19dnnzm/primitives.tar.gz">primitives.tar.gz</a> (release date: 2014/02/18)</p>
 
 <h3>
-<a name="ghc-head" class="anchor" href="#ghc-head"><span class="octicon octicon-link"></span></a>GHC-HEAD</h3>
+<a name="ghc-78-rc1" class="anchor" href="#ghc-78-rc1"><span class="octicon octicon-link"></span></a>GHC 7.8-rc1</h3>
 
-<p><a href="https://www.dropbox.com/s/oxl8b3g044fxkpc/ghc-7.7.20131001-x86_64-unknown-linux.tar.bz2">ghc-7.7.20131001-x86_64-unknown-linux.tar.bz2</a><br><a href="https://www.dropbox.com/s/8nhqk4uvpoy2o2m/ghc-7.7.20131001-x86_64-apple-darwin.tar.bz2">ghc-7.7.20131001-x86_64-apple-darwin.tar.bz2</a>  </p>
+<p><a href="http://www.haskell.org/ghc/dist/7.8.1-rc1">http://www.haskell.org/ghc/dist/7.8.1-rc1</a></p>
 
 <h3>
 <a name="th-lift-package" class="anchor" href="#th-lift-package"><span class="octicon octicon-link"></span></a>TH-Lift package</h3>
 
-<p><a href="https://www.dropbox.com/s/xx3nb62ojh4jtie/th-lift-0.5.5.tar.gz">All Platforms (.tar.gz)</a></p>
+<p><a href="http://hackage.haskell.org/package/th-lift-0.6.1/th-lift-0.6.1.tar.gz">All Platforms (.tar.gz)</a></p>
 
 <h1>
 <a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h1>
