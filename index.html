@@ -58,51 +58,31 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 </li>
 </ul>
 </li>
-<li>Install the <strong>CλaSH binary</strong>
+<li>Install <strong>Cabal</strong>
 
 <ul>
-<li>Download the CλaSH binary for your platform (See <a href="#c%CE%BBash-binaries">CλaSH Binaries</a>) to <code>$INSTALLDIR/bin</code> and rename it to <code>clash</code>
+<li>Download the sources for <code>cabal</code> (See <a href="#cabal">Cabal</a>)</li>
+<li>Unpack (<code>tar xzf</code>) the archive and <code>cd</code> to the directory</li>
+<li>Run: <code>sh bootstrap.sh</code>
 </li>
-<li>Ensure that it is executable: <code>chmod +x &lt;INSTALLDIR&gt;/bin/clash</code>
+<li>Follow the instruction to add the <code>cabal</code> program to your <code>PATH</code>
+</li>
+<li>Run: <code>cabal update</code>
 </li>
 </ul>
 </li>
-<li>Install the <strong>TH-Lift library</strong>
+<li>Install the modified <strong>RepLib</strong> library
 
 <ul>
-<li>Download the TH-Lift library (See <a href="#th-lift-package">TH-Lift package</a>)</li>
-<li>Unpack (<code>tar xzf</code> / <code>unzip</code>) the archive and <code>cd</code> to the directory</li>
-<li>Run: <code>ghc --make Setup.hs</code>
-</li>
-<li>Run: <code>./Setup configure --global --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the location you installed <strong>GHC</strong>
-</li>
-<li>Run: <code>./Setup build</code>
-</li>
-<li>Run: <code>./Setup install</code>
+<li>Download the sources for the <code>RepLib</code> library (See <a href="#modified_libraries">Modified Libraries</a>)</li>
+<li>Run <code>cabal install RepLib-0.5.3.1.tar.gz</code>
 </li>
 </ul>
 </li>
-<li>Install the <strong>CλaSH prelude library</strong>
+<li>Install <strong>CλaSH</strong>
 
 <ul>
-<li>Download the CλaSH prelude (See <a href="#c%CE%BBash-prelude">CλaSH Prelude</a>)</li>
-<li>Unpack (<code>tar xzf</code> / <code>unzip</code>) the archive and <code>cd</code> to the directory</li>
-<li>Run: <code>ghc --make Setup.hs</code>
-</li>
-<li>Run: <code>./Setup configure --global --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the location you installed <strong>GHC</strong>
-</li>
-<li>Run: <code>./Setup build</code>
-</li>
-<li>Run: <code>./Setup install</code>
-</li>
-</ul>
-</li>
-<li>Install the <strong>CλaSH primitive definitions</strong>
-
-<ul>
-<li>Download the CλaSH primitives (See <a href="#c%CE%BBash-primitive-definitions">CλaSH Primitive Definitions</a>)</li>
-<li>Unpack (<code>tar xzf</code>) the primitives tarball to <code>&lt;PRIMDIR&gt;</code>, where <code>&lt;PRIMDIR&gt;</code> is the directory where you want to store the primitive definitions</li>
-<li>Add a new environment variable (<code>CLASH_PRIMDIR</code>) pointing to the <code>&lt;PRIMDIR&gt;</code> directory: <code>export CLASH_PRIMDIR="&lt;PRIMDIR&gt;"</code>
+<li>Run <code>cabal install clash-ghc</code>
 </li>
 </ul>
 </li>
@@ -120,30 +100,21 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 </ol><h1>
 <a name="downloads" class="anchor" href="#downloads"><span class="octicon octicon-link"></span></a>Downloads</h1>
 
-<h4>
-<a name="c%CE%BBash-binaries" class="anchor" href="#c%CE%BBash-binaries"><span class="octicon octicon-link"></span></a>CλaSH Binaries</h4>
-
-<p><a href="https://www.dropbox.com/s/9fhvv1var3rkamr/clash-linux">Linux (X86_64)</a> (release date: 2014/02/18)<br><a href="https://www.dropbox.com/s/g5ery3cclv52mnn/clash-darwin">OS X (X86_64)</a> (release date: 2014/02/18)</p>
-
-<h3>
-<a name="c%CE%BBash-prelude" class="anchor" href="#c%CE%BBash-prelude"><span class="octicon octicon-link"></span></a>CλaSH Prelude</h3>
-
-<p><a href="https://github.com/christiaanb/clash-prelude/tarball/master">All Platforms (.tar.gz)</a><br><a href="https://github.com/christiaanb/clash-prelude/zipball/master">All Platforms (.zip)</a></p>
-
-<h3>
-<a name="c%CE%BBash-primitive-definitions" class="anchor" href="#c%CE%BBash-primitive-definitions"><span class="octicon octicon-link"></span></a>CλaSH Primitive Definitions</h3>
-
-<p><a href="https://www.dropbox.com/s/b1iq0u9a19dnnzm/primitives.tar.gz">primitives.tar.gz</a> (release date: 2014/02/18)</p>
-
 <h3>
 <a name="ghc-78-rc2" class="anchor" href="#ghc-78-rc2"><span class="octicon octicon-link"></span></a>GHC 7.8-rc2</h3>
 
-<p><a href="http://www.haskell.org/ghc/dist/7.8.1-rc2">http://www.haskell.org/ghc/dist/7.8.1-rc2</a></p>
+<p><a href="http://www.haskell.org/ghc/dist/7.8.1-rc2">http://www.haskell.org/ghc/dist/7.8.1-rc2</a>
+NB: Windows users must have <a href="http://www.mingw.org/">MinGW32</a> installed</p>
 
 <h3>
-<a name="th-lift-package" class="anchor" href="#th-lift-package"><span class="octicon octicon-link"></span></a>TH-Lift package</h3>
+<a name="cabal" class="anchor" href="#cabal"><span class="octicon octicon-link"></span></a>Cabal</h3>
 
-<p><a href="http://hackage.haskell.org/package/th-lift-0.6.1/th-lift-0.6.1.tar.gz">All Platforms (.tar.gz)</a></p>
+<p><a href="http://hackage.haskell.org/package/cabal-install-1.18.0.3/cabal-install-1.18.0.3.tar.gz">All Platforms (.tar.gz)</a></p>
+
+<h3>
+<a name="modified-libraries" class="anchor" href="#modified-libraries"><span class="octicon octicon-link"></span></a>Modified Libraries</h3>
+
+<p><a href="http://www.dropbox.com/s/w0nk8p5i2mkadj4/RepLib-0.5.3.1.tar.gz">RepLib - All Platforms (.tar.gz)</a></p>
 
 <h1>
 <a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h1>
