@@ -34,57 +34,77 @@
         <h1>
 <a name="introduction" class="anchor" href="#introduction"><span class="octicon octicon-link"></span></a>Introduction</h1>
 
-<p>CλaSH (pronounced ‘clash’) is a functional hardware description language that borrows both its syntax and semantics from the functional programming language Haskell. The merits of using a functional language to describe hardware comes from the fact that combinational circuits can be directly modeled as mathematical functions and that functional languages lend themselves very well at describing and (de-)composing mathematical functions. </p>
+<p>CλaSH (pronounced ‘clash’) is a functional hardware description language that borrows both its syntax and semantics from the functional programming language Haskell. The merits of using a functional language to describe hardware comes from the fact that combinational circuits can be directly modeled as mathematical functions and that functional languages lend themselves very well at describing and (de-)composing mathematical functions. The CλaSH compiler transforms these high-level descriptions to low-level synthesizable VHDL.</p>
 
 <p>An experimental version of the new CλaSH compiler and some examples can be found below.<br><strong>!! The compiler and the CλaSH Prelude library are subject to change !!</strong></p>
 
 <h1>
 <a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h1>
 
-<p>Because the constraint solver for type-level naturals is only included in the latest 7.8.1 release of <a href="http://haskell.org/ghc"><strong>GHC</strong></a>, installation of <strong>CλaSH</strong> is sadly more involved than a simple <code>cabal install clash</code>.
-The instructions for the installation are found below; these instructions assume that no previous versions of <strong>GHC</strong> are present on the system.
-If you want to run <strong>CλaSH</strong> alongside an existing installation of <strong>GHC</strong>, you should investigate solutions such as <a href="http://www.gnu.org/software/stow">stow</a> or <a href="https://github.com/spl/multi-ghc">multi-ghc</a>.</p>
+<p>The CλaSH compiler and Prelude library for circuit design only work with the
+<a href="GHC">http://haskell.org/ghc</a> Haskell compiler version 7.8.* and up.</p>
 
 <ol>
-<li>Install <strong>GHC 7.8.1</strong>
+<li>
+<p>Install <strong>GHC (version 7.8.* or higher)</strong></p>
 
 <ul>
-<li>Download GHC 7.8.1 for your platform (See <a href="#ghc-781">GHC 7.8.1</a>)</li>
-<li>Unpack (<code>tar xf</code>) the tarball and <code>cd</code> to the directory </li>
-<li>Run <code>./configure --prefix=&lt;INSTALLDIR&gt;</code>, where <code>&lt;INSTALLDIR&gt;</code> is the directory you want to install GHC</li>
-<li>Run <code>make install</code>
+<li><p>Download and install <a href="http://www.haskell.org/ghc/download">GHC for your platform</a>.
+Unix user can use <code>./configure prefix=\&lt;LOCATION\&gt;</code> to set the installation
+location.</p></li>
+<li><p>Make sure that the <code>bin</code> directory of <strong>GHC</strong> is in your <code>PATH</code>.</p></li>
+</ul>
 </li>
-<li>Add the <code>bin</code> directory of <strong>GHC</strong> to your path: <code>PATH=&lt;INSTALLDIR&gt;/bin:$PATH</code>
+</ol><ol>
+<li>
+<p>Install <strong>Cabal</strong></p>
+
+<ul>
+<li>
+<p>Windows and OS X Mavericks:</p>
+
+<ul>
+<li>Download the <a href="http://www.haskell.org/cabal/download.html">binary for cabal-install</a>
+</li>
+<li>Put the binary in a location mentioned in your <code>PATH</code>
 </li>
 </ul>
 </li>
-<li>Install <strong>Cabal</strong>
+<li>
+<p>Other Unix systems:</p>
 
 <ul>
-<li>Download the sources for <code>cabal</code> (See <a href="#cabal">Cabal</a>)</li>
+<li>Download the <a href="http://hackage.haskell.org/package/cabal-install">sources for cabal-install</a>
+</li>
 <li>Unpack (<code>tar xf</code>) the archive and <code>cd</code> to the directory</li>
-<li>Run: <code>sh bootstrap.sh</code>
+<li>Run <code>sh bootstrap.sh</code>
 </li>
-<li>Follow the instruction to add the <code>cabal</code> program to your <code>PATH</code>
-</li>
-<li>Run: <code>cabal update</code>
+<li>Follow the instructions to add <code>cabal</code> to your <code>PATH</code>
 </li>
 </ul>
 </li>
-<li>Install <strong>CλaSH</strong>
+<li><p>Run <code>cabal update</code></p></li>
+</ul>
+</li>
+</ol><ol>
+<li>
+<p>Install <strong>CλaSH</strong></p>
 
 <ul>
 <li>Run <code>cabal install clash-ghc</code>
 </li>
 </ul>
 </li>
-<li>Verify everything is working by:
+</ol><ol>
+<li>
+<p>Verify that everything is working by:</p>
 
 <ul>
 <li>Downloading the <a href="https://raw.github.com/christiaanb/clash2/master/examples/FIR.hs">FIR.hs</a> example</li>
-<li>Run: <code>clash --interactive FIR.hs</code>
+<li>Run <code>clash --interactive FIR.hs</code>
 </li>
-<li>Executing the <code>:vhdl</code> command, leave the interpreter using <code>:q</code>
+<li>Execute, in the interpreter, the <code>:vhdl</code> command.</li>
+<li>Exit the interpreter using <code>:q</code>
 </li>
 <li>Examine the VHDL code in the <code>vhdl</code> directory</li>
 </ul>
@@ -93,19 +113,6 @@ If you want to run <strong>CλaSH</strong> alongside an existing installation of
 <a name="documentation" class="anchor" href="#documentation"><span class="octicon octicon-link"></span></a>Documentation</h1>
 
 <p><a href="http://hackage.haskell.org/package/clash-prelude/docs/CLaSH-Tutorial.html">Tutorial</a><br><a href="http://hackage.haskell.org/package/clash-prelude">Reference documentation</a></p>
-
-<h1>
-<a name="downloads" class="anchor" href="#downloads"><span class="octicon octicon-link"></span></a>Downloads</h1>
-
-<h3>
-<a name="ghc-781" class="anchor" href="#ghc-781"><span class="octicon octicon-link"></span></a>GHC 7.8.1</h3>
-
-<p><a href="http://www.haskell.org/ghc/download_ghc_7_8_1">http://www.haskell.org/ghc/download_ghc_7_8_1</a></p>
-
-<h3>
-<a name="cabal" class="anchor" href="#cabal"><span class="octicon octicon-link"></span></a>Cabal</h3>
-
-<p><a href="http://hackage.haskell.org/package/cabal-install-1.18.0.3/cabal-install-1.18.0.3.tar.gz">All Platforms (.tar.gz)</a></p>
 
 <h1>
 <a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h1>
