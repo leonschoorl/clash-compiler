@@ -32,14 +32,15 @@
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
         <h1>
-<a name="introduction" class="anchor" href="#introduction"><span class="octicon octicon-link"></span></a>Introduction</h1>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction</h1>
 
 <p>CλaSH (pronounced ‘clash’) is a functional hardware description language that borrows both its syntax and semantics from the functional programming language Haskell. The merits of using a functional language to describe hardware comes from the fact that combinational circuits can be directly modeled as mathematical functions and that functional languages lend themselves very well at describing and (de-)composing mathematical functions. The CλaSH compiler transforms these high-level descriptions to low-level synthesizable VHDL.</p>
 
-<p>An experimental version of the new CλaSH compiler and some examples can be found below.<br><strong>!! The compiler and the CλaSH Prelude library are subject to change !!</strong></p>
+<p>An experimental version of the new CλaSH compiler and some examples can be found below.<br>
+<strong>!! The compiler and the CλaSH Prelude library are subject to change !!</strong></p>
 
 <h1>
-<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h1>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h1>
 
 <p>The CλaSH compiler and Prelude library for circuit design only work with the
 <a href="http://haskell.org/ghc">GHC</a> Haskell compiler version 7.8.* and up.</p>
@@ -55,7 +56,6 @@ location.</p></li>
 <li><p>Make sure that the <code>bin</code> directory of <strong>GHC</strong> is in your <code>PATH</code>.</p></li>
 </ul>
 </li>
-</ol><ol>
 <li>
 <p>Install <strong>Cabal (version 1.18.* or higher)</strong></p>
 
@@ -86,7 +86,6 @@ location.</p></li>
 <li><p>Run <code>cabal update</code></p></li>
 </ul>
 </li>
-</ol><ol>
 <li>
 <p>Install <strong>CλaSH</strong></p>
 
@@ -95,7 +94,6 @@ location.</p></li>
 </li>
 </ul>
 </li>
-</ol><ol>
 <li>
 <p>Verify that everything is working by:</p>
 
@@ -109,18 +107,33 @@ location.</p></li>
 <li>Examine the VHDL code in the <code>vhdl</code> directory</li>
 </ul>
 </li>
-</ol><h1>
-<a name="documentation" class="anchor" href="#documentation"><span class="octicon octicon-link"></span></a>Documentation</h1>
-
-<p><a href="http://hackage.haskell.org/package/clash-prelude/docs/CLaSH-Tutorial.html">Tutorial</a><br><a href="http://hackage.haskell.org/package/clash-prelude">Reference documentation</a></p>
+</ol>
 
 <h1>
-<a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h1>
+<a id="documentation" class="anchor" href="#documentation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Documentation</h1>
 
-<p><a href="https://raw.githubusercontent.com/christiaanb/clash2/794df7b67771c7e5b3a127ac5410d8c356eb1d14/examples/FIR.hs">FIR.hs</a><br><a href="https://raw.githubusercontent.com/christiaanb/clash2/794df7b67771c7e5b3a127ac5410d8c356eb1d14/examples/Calculator.hs">Calculator.hs</a></p>
+<p><a href="http://hackage.haskell.org/package/clash-prelude/docs/CLaSH-Tutorial.html">Tutorial</a><br>
+<a href="http://hackage.haskell.org/package/clash-prelude">Reference documentation</a></p>
 
 <h1>
-<a name="support" class="anchor" href="#support"><span class="octicon octicon-link"></span></a>Support</h1>
+<a id="examples" class="anchor" href="#examples" aria-hidden="true"><span class="octicon octicon-link"></span></a>Examples</h1>
+
+<p><a href="https://raw.githubusercontent.com/christiaanb/clash2/794df7b67771c7e5b3a127ac5410d8c356eb1d14/examples/FIR.hs">FIR.hs</a><br>
+<a href="https://raw.githubusercontent.com/christiaanb/clash2/794df7b67771c7e5b3a127ac5410d8c356eb1d14/examples/Calculator.hs">Calculator.hs</a></p>
+
+<h1>
+<a id="publications" class="anchor" href="#publications" aria-hidden="true"><span class="octicon octicon-link"></span></a>Publications</h1>
+
+<ul>
+<li><p>Baaij, C.P.R. and Kuper, J. (2014) <strong>Using Rewriting to Synthesize Functional Languages to Digital Circuits</strong>. In: <em>Jay McCarthy, editor, Trends in Functional Programming (TFP)</em>, Provo, UT, USA, May 14-16, 2013. Volume 8322 of <em>Lecture Notes in Computer Science (LNCS)</em>. pages 17–33. Springer-Verlag. ISBN 978-3-642-45340-3. <a href="http://eprints.eemcs.utwente.nl/23904/">link</a></p></li>
+<li><p>Wester, R. and Baaij, C.P.R. and Kuper, J. (2012) <strong>A two step hardware design method using CλaSH.</strong>. In: <em>Proceedings of the 22nd International Conference on Field Programmable Logic and Applications (FPL)</em>, Aug 29-31, 2012, Oslo, Norway. pages 181-188. IEEE Computer Society. ISBN 978-1-4673-2257-7. <a href="http://eprints.eemcs.utwente.nl/22585/">link</a></p></li>
+<li><p>Gerards, M.E.T. and Baaij, C.P.R. and Kuper, J. and Kooijman, M. (2011) <strong>Higher-Order Abstraction in Hardware Descriptions with CλaSH</strong>. In: <em>Proceedings of the 14th Conference on Digital System Design (DSD)</em>, Oulu, Finland. pages 495-502, 31 Aug - 2 Sept, 2011. IEEE Computer Society. ISBN 978-0-7695-4494-6. <a href="http://eprints.eemcs.utwente.nl/20645/">link</a></p></li>
+<li><p>Kuper, J. and Baaij, C.P.R. and Kooijman, M. and Gerards, M.E.T. (2010) <strong>Exercises in architecture specification using CλaSH</strong>. In: <em>Proceedings of Forum on Specification and Design Languages (FDL)</em>, 2010, Southampton, England, Sept 13-16. pages 178-183. Electronic Chips &amp; Systems design Initiative (ECSI). ISSN 1636-9874. <a href="http://eprints.eemcs.utwente.nl/22072/">link</a></p></li>
+<li><p>Baaij, C.P.R. and Kooijman, M. and Kuper, J. and Boeijink, W.A. and Gerards, M.E.T. (2010) <strong>CλaSH: Structural Descriptions of Synchronous Hardware using Haskell</strong>. In: <em>Proceedings of the 13th Conference on Digital System Design (DSD)</em>, Lille, France, Sept 1-3, 2010. pages 714-721. IEEE Computer Society. ISBN 978-0-7695-4171-6. <a href="http://eprints.eemcs.utwente.nl/18376/">link</a></p></li>
+</ul>
+
+<h1>
+<a id="support" class="anchor" href="#support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support</h1>
 
 <p>For updates and questions join the mailing list <a href="mailto:clash-language+subscribe@googlegroups.com">clash-language+subscribe@googlegroups.com</a> or read the <a href="https://groups.google.com/d/forum/clash-language">forum</a>.<br>
 Bug reports for the CLaSH compiler: <a href="http://github.com/christiaanb/clash2/issues">http://github.com/christiaanb/clash2/issues</a><br>
