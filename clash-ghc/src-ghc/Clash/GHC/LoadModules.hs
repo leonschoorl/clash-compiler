@@ -73,6 +73,9 @@ import           Clash.GHC.GHC2Core           (modNameM)
 import           Clash.GHC.LoadInterfaceFiles
 import           Clash.Util                   (curLoc)
 
+import Debug.Trace
+import SrcLoc
+
 ghcLibDir :: IO FilePath
 ghcLibDir = do
   (libDirM,exitCode) <- getProcessOutput $ "ghc-" ++ TOOL_VERSION_ghc ++ " --print-libdir"
@@ -446,39 +449,41 @@ removeStrictnessAnnotations ::
 removeStrictnessAnnotations pm =
     pm {GHC.pm_parsed_source = fmap rmPS (GHC.pm_parsed_source pm)}
   where
-    rmPS :: GHC.DataId name => GHC.HsModule name -> GHC.HsModule name
+    -- rmPS :: GHC.DataId name => GHC.HsModule name -> GHC.HsModule name
     rmPS hsm = hsm {GHC.hsmodDecls = (fmap . fmap) rmHSD (GHC.hsmodDecls hsm)}
 
-    rmHSD :: GHC.DataId name => GHC.HsDecl name -> GHC.HsDecl name
+    -- rmHSD :: GHC.DataId name => GHC.HsDecl name -> GHC.HsDecl name
     rmHSD (GHC.TyClD tyClDecl) = GHC.TyClD (rmTyClD tyClDecl)
     rmHSD hsd = hsd
 
-    rmTyClD :: GHC.DataId name => GHC.TyClDecl name -> GHC.TyClDecl name
+    -- rmTyClD :: GHC.DataId name => GHC.TyClDecl name -> GHC.TyClDecl name
     rmTyClD dc@(GHC.DataDecl {}) = dc {GHC.tcdDataDefn = rmDataDefn (GHC.tcdDataDefn dc)}
     rmTyClD tyClD = tyClD
 
-    rmDataDefn :: GHC.DataId name => GHC.HsDataDefn name -> GHC.HsDataDefn name
+    -- rmDataDefn :: GHC.DataId name => GHC.HsDataDefn name -> GHC.HsDataDefn name
     rmDataDefn hdf = hdf {GHC.dd_cons = (fmap . fmap) rmCD (GHC.dd_cons hdf)}
 
-    rmCD :: GHC.DataId name => GHC.ConDecl name -> GHC.ConDecl name
+    -- rmCD :: GHC.DataId name => GHC.ConDecl name -> GHC.ConDecl name
     rmCD gadt@(GHC.ConDeclGADT {}) = gadt {GHC.con_type = rmSigType (GHC.con_type gadt)}
     rmCD h98@(GHC.ConDeclH98 {})   = h98  {GHC.con_details = rmConDetails (GHC.con_details h98)}
 
     -- type LHsSigType name = HsImplicitBndrs name (LHsType name)
-    rmSigType :: GHC.DataId name => GHC.LHsSigType name -> GHC.LHsSigType name
+    -- rmSigType :: GHC.DataId name => GHC.LHsSigType name -> GHC.LHsSigType name
     rmSigType hsIB = hsIB {GHC.hsib_body = rmHsType (GHC.hsib_body hsIB)}
 
     -- type HsConDeclDetails name = HsConDetails (LBangType name) (Located [LConDeclField name])
-    rmConDetails :: GHC.DataId name => GHC.HsConDeclDetails name -> GHC.HsConDeclDetails name
+    -- rmConDetails :: GHC.DataId name => GHC.HsConDeclDetails name -> GHC.HsConDeclDetails name
     rmConDetails (GHC.PrefixCon args) = GHC.PrefixCon (fmap rmHsType args)
     rmConDetails (GHC.RecCon rec)     = GHC.RecCon ((fmap . fmap . fmap) rmConDeclF rec)
     rmConDetails (GHC.InfixCon l r)   = GHC.InfixCon (rmHsType l) (rmHsType r)
 
-    rmHsType :: GHC.DataId name => GHC.Located (GHC.HsType name) -> GHC.Located (GHC.HsType name)
+    --rmHsType :: GHC.DataId name => GHC.Located (GHC.HsType name) -> GHC.Located (GHC.HsType name)
+    rmHsType :: GHC.LHsType GHC.RdrName -> GHC.LHsType GHC.RdrName
     rmHsType = transform go
       where
-        go (GHC.unLoc -> GHC.HsBangTy _ ty) = ty
+        -- go ty'@(GHC.unLoc -> GHC.HsBangTy _ ty) = trace ($(curLoc) ++ "removing HsBangTy from: " ++ Outputable.showSDocUnsafe (ppr $ getLoc ty') ++ ": "++ Outputable.showSDocUnsafe (ppr ty)) ty
+        go ty'@(GHC.unLoc -> GHC.HsBangTy _ ty) = trace ($(curLoc) ++ "NOT removing HsBangTy from: " ++ Outputable.showSDocUnsafe (ppr $ getLoc ty') ++ ": "++ Outputable.showSDocUnsafe (ppr ty)) ty'
         go ty = ty
-
-    rmConDeclF :: GHC.DataId name => GHC.ConDeclField name -> GHC.ConDeclField name
+--37
+    -- rmConDeclF :: GHC.DataId name => GHC.ConDeclField name -> GHC.ConDeclField name
     rmConDeclF cdf = cdf {GHC.cd_fld_type = rmHsType (GHC.cd_fld_type cdf)}
