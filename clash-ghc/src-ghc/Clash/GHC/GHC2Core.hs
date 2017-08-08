@@ -52,7 +52,7 @@ import CoAxiom    (CoAxiom (co_ax_branches), CoAxBranch (cab_lhs,cab_rhs),
 import Coercion   (Role(..),coercionType,coercionKind,mkCoercionType)
 import CoreFVs    (exprSomeFreeVars)
 import CoreSyn
-  (AltCon (..), Bind (..), CoreExpr, Expr (..), Unfolding (..), collectArgs,
+  (AltCon (..), Bind (..), CoreBndr, CoreExpr, Expr (..), Unfolding (..), collectArgs,
    rhssOfAlts, unfoldingTemplate)
 import DataCon    (DataCon, dataConExTyVars,
                    dataConName, dataConRepArgTys,
@@ -110,6 +110,8 @@ import           Clash.Driver.Types
 import           Clash.Primitives.Types
 import           Clash.Util
 
+import Data.Data(Data)
+import Data.Generics.Text
 instance Hashable Name where
   hashWithSalt s = hashWithSalt s . getKey . nameUnique
 
@@ -239,6 +241,9 @@ makeAlgTyConRhs algTcRhs = case algTcRhs of
   AbstractTyCon {} -> return Nothing
   TupleTyCon {}    -> error "Cannot handle tuple tycons"
 
+instance Data a => Show (Expr a) where
+  show = gshow
+
 coreToTerm :: Bool
            -> PrimMap a
            -> [Var]
@@ -255,6 +260,9 @@ coreToTerm errorInvalidCoercions primMap unlocs srcsp coreExpr = Reader.runReade
       | otherwise
       = term' e
       where
+        go :: [Char]
+           -> [Expr CoreBndr]
+           -> ReaderT SrcSpan (State GHC2CoreState) C.Term
         -- Remove most Signal transformers
         go "Clash.Signal.Internal.mapSignal#"  args
           | length args == 5
@@ -281,6 +289,9 @@ coreToTerm errorInvalidCoercions primMap unlocs srcsp coreExpr = Reader.runReade
         go "GHC.Stack.withFrozenCallStack"     args
           | length args == 3
           = term (App (args!!2) (args!!1))
+        go "CLaSH.Sized.Internal.Signed.toInteger#" args = case args of
+              (Type (LitTy (NumTyLit n)):_) | n > 64 -> error ("Signed.toInteger# called on Signed with more then 64 bits" ++ show args)
+              _ -> term' e
         go _ _ = term' e
     term' (Var x)                 = do
       srcsp' <- Reader.ask
