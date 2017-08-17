@@ -289,7 +289,7 @@ coreToTerm errorInvalidCoercions primMap unlocs srcsp coreExpr = Reader.runReade
         go "GHC.Stack.withFrozenCallStack"     args
           | length args == 3
           = term (App (args!!2) (args!!1))
-        go "CLaSH.Sized.Internal.Signed.toInteger#" args = case args of
+        go "CLaSH.Sized.Internal.Signed.toInteger#" args | False = case args of
               (Type (LitTy (NumTyLit n)):_) | n > 64 -> error ("Signed.toInteger# called on Signed with more then 64 bits" ++ show args)
               _ -> term' e
         go _ _ = term' e
