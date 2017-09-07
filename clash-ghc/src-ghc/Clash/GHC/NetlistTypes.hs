@@ -119,6 +119,12 @@ ghcTypeToHWType iw floatSupport = go
         "Clash.Sized.Internal.Signed.Signed" ->
           (Signed . fromInteger) <$> mapExceptT (Just . coerce) (tyNatSize m (head args))
 
+        "Clash.Sized.Internal.SInteger.SInteger" ->
+          case tyView (head args) of
+             TyConApp _just [_nat,LitTy (NumTy n)] -> return (Signed $ fromInteger n)
+             TyConApp _nothing [_nat] -> error $ $(curLoc) ++ "Can't translate SInteger without size annotation" -- TODO nicer error message, or just warning and still pick 64bits like before?
+             _ -> error $ $(curLoc) ++ "SInteger, this shouldn't happen"
+
         "Clash.Sized.Internal.Unsigned.Unsigned" ->
           (Unsigned . fromInteger) <$> mapExceptT (Just . coerce) (tyNatSize m (head args))
 
