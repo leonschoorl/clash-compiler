@@ -30,6 +30,8 @@ import Clash.Netlist.Types              (HWType(..))
 import Clash.Signal.Internal            (ClockKind (..), ResetKind (..))
 import Clash.Util                       (curLoc)
 
+import Debug.Trace
+
 ghcTypeToHWType
   :: Int
   -> Bool
@@ -74,7 +76,7 @@ ghcTypeToHWType iw floatSupport = go
                       _  -> error $ $(curLoc) ++ "Word64 DC has unexpected amount of arguments"
                     _    -> error $ $(curLoc) ++ "Word64 TC has unexpected amount of DCs"
              else return (Unsigned 64)
-        "GHC.Integer.Type.Integer"      -> return (Signed iw)
+        "GHC.Integer.Type.Integer"      -> return (trace ("WARNING picking "++ show iw++"bits for Integer") Signed iw)
         "GHC.Natural.Natural"           -> return (Unsigned iw)
         "GHC.Prim.Char#"                -> return (Unsigned 21)
         "GHC.Prim.Int#"                 -> return (Signed iw)
