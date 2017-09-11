@@ -1,0 +1,25 @@
+[ { "BlackBox" :
+    { "name"      : "Clash.Sized.Internal.fromInteger_unsafe"
+    , "type"      : "fromInteger_unsafe :: Integer -> SInteger aM"
+    , "templateE" : "~ARG[0]"
+    }
+  }
+, { "BlackBox" :
+    { "name"      : "Clash.Sized.Internal.SInteger.plus#"
+    , "type"      : "plus# :: cM ~ (MaxFn aM bM) => SInteger aM -> SInteger bM -> SInteger cM"
+    , "templateE" : "~ARG[1] + ~ARG[2]"
+    }
+  }
+, { "BlackBox" :
+    { "name"      : "Clash.Sized.Internal.SInteger.minus#"
+    , "type"      : "minus# :: cM ~ (MaxFn aM bM) => SInteger aM -> SInteger bM -> SInteger cM"
+    , "templateE" : "~ARG[1] - ~ARG[2]"
+    }
+  }
+, { "BlackBox" :
+    { "name"      : "Clash.Sized.Internal.SInteger.times#"
+    , "type"      : "times# :: cM ~ (SumFn aM bM) => SInteger aM -> SInteger bM -> SInteger cM"
+    , "templateE" : "~ARG[1] * ~ARG[2]"
+    }
+  }
+]
