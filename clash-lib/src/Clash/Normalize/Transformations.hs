@@ -41,13 +41,16 @@ module Clash.Normalize.Transformations
   , removeUnusedExpr
   , inlineCleanup
   , flattenLet
+  , splitCast
+  , inlineCast
+  , eliminateCastCast
   )
 where
 
 import           Control.Concurrent.Supply   (splitSupply)
 import qualified Control.Lens                as Lens
 import qualified Control.Monad               as Monad
-import           Control.Monad.Writer        (WriterT (..), lift, tell)
+import           Control.Monad.Writer        (WriterT (..), lift, listen, tell)
 import           Control.Monad.Trans.Except  (runExcept)
 import           Data.Bits                   ((.&.), complement)
 import qualified Data.Either                 as Either
@@ -55,6 +58,7 @@ import qualified Data.HashMap.Lazy           as HashMap
 import qualified Data.HashSet                as HashSet
 import qualified Data.List                   as List
 import qualified Data.Maybe                  as Maybe
+import qualified Data.Monoid                 as Monoid
 import qualified Data.Set                    as Set
 import qualified Data.Set.Lens               as Lens
 import           Data.Text                   (Text, unpack)
@@ -537,6 +541,58 @@ bindConstantVar = inlineBinders test
           n -> return (termSize e <= n)
         _ -> return False
     -- test _ _ = return False
+
+-- | Only inline casts that just contain a 'Var', because these are guaranteed work-free.
+-- These are the result of the 'splitCast' transformation.
+inlineCast :: NormRewrite
+inlineCast = inlineBinders test
+  where
+    test _ (_, Embed (Cast (Var _ _) _ _)) = return True
+    test _ _ = return False
+
+-- | Eleminate two back to back casts where the type going in and coming out are the same
+--
+-- @
+--   (cast :: b -> a) $ (cast :: a -> b) x   ==> x
+-- @
+eliminateCastCast :: NormRewrite
+eliminateCastCast _ c@(Cast (Cast e _ty1 ty2) ty3 _ty4)
+  | ty3 == ty2 = changed e
+  | otherwise = error $ $(curLoc) ++ "Found 2 nested casts whose types don't line up:\n" ++ showDoc c
+
+eliminateCastCast _ e = return e
+
+-- | Split a cast
+--
+-- @
+-- let x = e |> y
+-- ==>
+-- let x  = x' |> y
+--     x' = e
+-- @
+splitCast :: NormRewrite
+splitCast ctx e@(Letrec b) = do
+  (v,e') <- unbind b
+  let vs = unrec v
+  (vss, Monoid.getAny -> hasChanged) <- listen (mapM (splitCastLetBinding ctx) vs)
+  let vs' = concat vss
+  if hasChanged then changed . Letrec $ bind (rec vs') (e')
+                else return e
+splitCast _ e = return e
+
+
+splitCastLetBinding :: [CoreContext] -> LetBinding -> RewriteMonad extra [LetBinding]
+splitCastLetBinding ctx x@(nm, Embed e) = case e of
+  Cast (Var _ _) _ _ -> return [x]
+  Cast (Cast _ _ _) _ _ -> return [x]
+  Cast e' ty1 ty2 -> do
+    tcm <- Lens.view tcCache
+    (nm',var) <- mkTmBinderFor tcm (mkDerivedName ctx (name2String $ varName nm)) e'
+    changed [(nm',Embed e')
+            ,(nm, Embed $ Cast var ty1 ty2)
+            ]
+  _ -> return [x]
+
 
 -- | Inline work-free functions, i.e. fully applied functions that evaluate to
 -- a constant
