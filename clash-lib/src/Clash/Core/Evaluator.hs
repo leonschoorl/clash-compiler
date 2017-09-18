@@ -232,6 +232,9 @@ step eval gbl tcm (h, k, e) = case e of
   (TyApp e1 ty) -> Just (h,Instantiate ty:k,e1)
   (Case scrut ty alts) -> Just (h,Scrutinise ty alts:k,scrut)
   (Letrec bs)   -> Just (allocate h k bs)
+  -- c@(Cast _ _ _)-> error $ "Clash.Core.Evaluator.step: not sure what to do for " ++ showDoc c
+  -- TODO treating a cast as transparant, is that ok?
+  Cast e' _ _ -> step eval gbl tcm (h, k, e')
 
 newLetBinding
   :: TyConMap
