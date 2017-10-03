@@ -102,6 +102,8 @@ data RewriteState extra
   -- ^ Used for 'Fresh'
   , _extra            :: !extra
   -- ^ Additional state
+  , _callGraph        :: CallGraph
+  -- ^ Call graph
   }
 
 makeLenses ''RewriteState

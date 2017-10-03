@@ -93,7 +93,7 @@ runNormalization
   -- ^ NormalizeSession to run
   -> a
 runNormalization opts supply globals typeTrans tcm tupTcm eval primMap rcsMap topEnts
-  = runRewriteSession rwEnv rwState
+  = callGr `seq` runRewriteSession rwEnv rwState
   where
     rwEnv     = RewriteEnv
                   (opt_dbgLevel opts)
@@ -111,7 +111,13 @@ runNormalization opts supply globals typeTrans tcm tupTcm eval primMap rcsMap to
                   (error $ $(curLoc) ++ "Report as bug: no curFun",noSrcSpan)
                   0
                   normState
+                  callGr
 
+    callGr =      (case topEnts of
+                    [topEnt] -> callGraph globals topEnt
+                    []       -> error ($(curLoc) ++ " no topEnts")
+                    _        -> error ($(curLoc) ++ " more then one topEnts: " ++ show topEnts)
+                  )
     normState = NormalizeState
                   HashMap.empty
                   Map.empty
