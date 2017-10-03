@@ -56,6 +56,10 @@ data CoreContext
   | CastBody         -- ^ Body of a Cast
   deriving (Eq,Show)
 
+-- | A call graph counts the number of occurrences that a functions 'g' is used
+-- in 'f'.
+type CallGraph = HashMap TmOccName (HashMap TmOccName Word)
+
 -- | State of a rewriting session
 data RewriteState extra
   = RewriteState

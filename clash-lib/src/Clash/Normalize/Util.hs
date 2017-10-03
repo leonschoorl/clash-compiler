@@ -28,7 +28,7 @@ import           Clash.Core.Util
   (collectArgs, isClockOrReset, isPolyFun, termType)
 import           Clash.Driver.Types      (BindingMap)
 import           Clash.Normalize.Types
-import           Clash.Rewrite.Types     (bindings,extra,tcCache)
+import           Clash.Rewrite.Types     (CallGraph, bindings,extra,tcCache)
 import           Clash.Rewrite.Util      (specialise)
 
 -- | Determine if a function is already inlined in the context of the 'NetlistMonad'
@@ -103,10 +103,6 @@ isRecursiveBndr f = do
               isR  = f `elem` used
           (extra.recursiveComponents) %= HashMap.insert f isR
           return isR
-
--- | A call graph counts the number of occurrences that a functions 'g' is used
--- in 'f'.
-type CallGraph = HashMap TmOccName (HashMap TmOccName Word)
 
 -- | Create a call graph for a set of global binders, given a root
 callGraph
