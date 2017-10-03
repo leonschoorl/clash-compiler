@@ -22,7 +22,7 @@ import Control.Monad.Fix                     (MonadFix (..), fix)
 import Control.Monad.Reader                  (MonadReader (..))
 import Control.Monad.State                   (MonadState (..))
 import Control.Monad.Writer                  (MonadWriter (..))
-import Data.HashMap.Strict                   (HashMap)
+import Data.HashMap.Strict                   (HashMap, alter, insertWith, singleton)
 import Data.HashSet                          (HashSet)
 import Data.IntMap.Strict                    (IntMap)
 import Data.Monoid                           (Any)
@@ -59,6 +59,33 @@ data CoreContext
 -- | A call graph counts the number of occurrences that a functions 'g' is used
 -- in 'f'.
 type CallGraph = HashMap TmOccName (HashMap TmOccName Word)
+
+-- | Add a call from f to g to the graph
+addCall :: CallGraph -> TmOccName -> TmOccName -> CallGraph
+addCall cg f g = alter addCallTo f cg
+  where
+    addCallTo :: Maybe (HashMap TmOccName Word) -> Maybe (HashMap TmOccName Word)
+    addCallTo hm = case hm of
+      Nothing -> Just $ singleton g 1
+      Just h  -> Just $ insertWith (+) g 1 h
+
+-- | Remove a call from f to g from the graph
+removeCall :: CallGraph -> TmOccName -> TmOccName -> CallGraph
+removeCall cg f g = alter removeCallTo f cg
+  where
+    notFound = "Error can't remove a call from " ++ show f
+               ++ " to " ++ show g ++ ", because there are none."
+    removeCallTo :: Maybe (HashMap TmOccName Word) -> Maybe (HashMap TmOccName Word)
+    removeCallTo hm = case hm of
+      Nothing -> error $ $(curLoc) ++ notFound
+      Just h  -> let h' = alter removeCallTo2 g h
+                 in if null h' then Nothing else Just h'
+    removeCallTo2 :: Maybe Word -> Maybe Word
+    removeCallTo2 wm = case wm of
+      Nothing -> error $ $(curLoc) ++ notFound
+      Just w  -> case w-1 of
+                   0  -> Nothing
+                   w' -> Just w'
 
 -- | State of a rewriting session
 data RewriteState extra
