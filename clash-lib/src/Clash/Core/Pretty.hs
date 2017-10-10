@@ -188,7 +188,7 @@ pprPrecTyApp prec e ty = do
 pprPrecLetrec :: LFresh m => Rational -> [(Id, Embed Term)] -> Term
   -> m Doc
 pprPrecLetrec prec xes body
-  | [] <- xes = pprPrec prec body
+  --  | [] <- xes = pprPrec prec body -- this hides empty letrec's from the ppr output
   | otherwise = do
     body' <- pprPrec noPrec body
     xes'  <- mapM (\(x,e) -> do
