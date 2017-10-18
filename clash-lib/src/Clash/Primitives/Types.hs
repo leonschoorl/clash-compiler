@@ -7,6 +7,8 @@
   Type and instance definitions for Primitive
 -}
 
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -14,11 +16,13 @@
 module Clash.Primitives.Types where
 
 import           Control.Applicative  ((<|>))
+import           Control.DeepSeq      (NFData)
 import           Data.Aeson           (FromJSON (..), Value (..), (.:), (.:?), (.!=))
 import           Data.HashMap.Lazy    (HashMap)
 import qualified Data.HashMap.Strict  as H
 import qualified Data.Text            as S
 import           Data.Text.Lazy       (Text)
+import           GHC.Generics         (Generic)
 
 -- | Primitive Definitions
 type PrimMap a = HashMap S.Text (Primitive a)
@@ -47,7 +51,7 @@ data Primitive a
   { name     :: !S.Text -- ^ Name of the primitive
   , primType :: !Text -- ^ Additional information
   }
-  deriving Show
+  deriving (Show,Generic,NFData)
 
 instance FromJSON (Primitive Text) where
   parseJSON (Object v) = case H.toList v of
