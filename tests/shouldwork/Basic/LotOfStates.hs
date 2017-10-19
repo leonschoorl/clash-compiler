@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module LotOfStates where
 
 import Clash.Prelude
@@ -18,7 +19,7 @@ data States = S_0
 fsm :: States
     -> Unsigned 8
     -> (States, Unsigned 8)
-fsm s i
+fsm !s !i
   | s == S_0  && i ==  1 = (S_1,   1)
   | s == S_1  && i ==  2 = (S_2,   2)
   | s == S_2  && i ==  3 = (S_3,   3)

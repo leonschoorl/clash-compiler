@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds, RecordWildCards, TypeOperators #-}
+{-# LANGUAGE BangPatterns #-}
 module Sprockell where
 
 import Clash.Prelude hiding (Word)
@@ -163,7 +164,7 @@ oddB = (== 1) . lsb
 -------------------------------------------------------------}
 
 decode :: (ProgMemAddr, DataMemAddr) -> Assembly -> MachCode
-decode (pc, sp) instr  = case instr of
+decode (!pc, !sp) instr  = case instr of
     Compute c i0 i1 i2  ->  nullcode {ldCode  = LdAlu,  opCode    = c,        fromreg0 = i0, fromreg1=i1, toreg=i2}
     Jump jc n           ->  nullcode {jmpCode = jc,     fromreg0  = jmpreg,   jumpN    = n}
     Load  (RImm  n) j   ->  nullcode {ldCode  = LdImm,  immvalueR = n,        toreg    = j}
@@ -176,7 +177,7 @@ decode (pc, sp) instr  = case instr of
     Debug _             ->  nullcode
 
 alu :: OpCode -> (Word, Word) -> (Word, Bool)
-alu opCode (x, y) = (z, cnd)
+alu !opCode (!x, !y) = (z, cnd)
     where
         (z, cnd)   = (app opCode x y, oddB z)
         app opCode = case opCode of

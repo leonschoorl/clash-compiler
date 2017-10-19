@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Calculator where
 
 import Clash.Prelude hiding (Word)
@@ -21,9 +22,9 @@ pu :: (Num a, Num b)
    -> ( (a, a, b)     -- New state
       , (b, Maybe a)  -- Output
       )
-pu alu (op1,op2,cnt) (dmem,Pop)  = ((dmem,op1,cnt-1),(cnt,Nothing))
-pu alu (op1,op2,cnt) (dmem,Push) = ((op1,op2,cnt+1) ,(cnt,Nothing))
-pu alu (op1,op2,cnt) (dmem,opc)  = ((op1,op2,cnt)   ,(cnt,alu opc op1 op2))
+pu alu (!op1,!op2,!cnt) (dmem,Pop)  = ((dmem,op1,cnt-1),(cnt,Nothing))
+pu alu (!op1,!op2,!cnt) (dmem,Push) = ((op1,op2,cnt+1) ,(cnt,Nothing))
+pu alu (!op1,!op2,!cnt) (dmem,opc)  = ((op1,op2,cnt)   ,(cnt,alu opc op1 op2))
 
 datamem :: (KnownNat n, Integral i)
         => Vec n a       -- Current state
@@ -36,7 +37,7 @@ topEntity
   :: SystemClockReset
   => Signal System (OPC Word)
   -> Signal System (Maybe Word)
-topEntity i = val
+topEntity !i = val
   where
     (addr,val) = (pu alu <^> (0,0,0 :: Unsigned 3)) (mem,i)
     mem        = (datamem <^> initMem) (addr,val)

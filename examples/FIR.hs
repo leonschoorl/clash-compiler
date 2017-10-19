@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module FIR where
 
 import Clash.Prelude
@@ -6,15 +7,15 @@ dotp :: SaturatingNum a
      => Vec (n + 1) a
      -> Vec (n + 1) a
      -> a
-dotp as bs = fold boundedPlus (zipWith boundedMult as bs)
+dotp !as !bs = fold boundedPlus (zipWith boundedMult as bs)
 
 fir
   :: (Default a, KnownNat n, SaturatingNum a, HasClockReset domain gated synchronous)
   => Vec (n + 1) a -> Signal domain a -> Signal domain a
-fir coeffs x_t = y_t
+fir !coeffs !x_t = y_t
   where
-    y_t = dotp coeffs <$> bundle xs
-    xs  = window x_t
+    !y_t = dotp coeffs <$> bundle xs
+    !xs  = window x_t
 
 topEntity
   :: SystemClockReset

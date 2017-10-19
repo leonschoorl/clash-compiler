@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module NORX where
 import Data.Bits
 import Clash.Prelude
@@ -26,7 +27,7 @@ f inp = result
     result = (u0:>u1:>u2:>u3:>u4:>u5:>u6:>u7:>u8:>u9:>u10:>u11:>u12:>u13:>u14:>u15:>Nil)
 
 g :: (W, W, W, W) -> (W, W, W, W)
-g (a, b, c, d) = (a'', b'', c'', d'')
+g (!a, !b, !c, !d) = (a'', b'', c'', d'')
   where
     a'  = h a b
     d'  = (a' `xor` d)   `rotateR` 8
@@ -38,7 +39,7 @@ g (a, b, c, d) = (a'', b'', c'', d'')
     b'' = (b' `xor` c'') `rotateR` 31
 
 h :: W -> W -> W
-h x y = (x `xor` y) `xor` ((x .&. y) `shiftL` 1)
+h !x !y = (x `xor` y) `xor` ((x .&. y) `shiftL` 1)
 
 --------------------------------------------------------------------------------
 -- HDL export interface

@@ -1,9 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 module Resize where
 
 import Clash.Prelude
 
 topEntity :: Signed 4 -> Signed 3
-topEntity = resize
+topEntity !a = resize a
 {-# NOINLINE topEntity #-}
 
 testBench :: Signal System Bool

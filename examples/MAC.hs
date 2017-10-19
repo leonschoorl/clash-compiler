@@ -1,10 +1,11 @@
+{-# LANGUAGE BangPatterns #-}
 module MAC where
 
 import Clash.Prelude
 
-ma acc (x,y) = acc + x * y
+ma !acc (!x,!y) = acc + x * y
 
-macT acc (x,y) = (acc',o)
+macT !acc (!x,!y) = (acc',o)
   where
     acc' = ma acc (x,y)
     o    = acc

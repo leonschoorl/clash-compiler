@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 module Reducer where
 
 import Clash.Prelude
@@ -65,7 +66,7 @@ data ResState   = Res { cellMem  :: Vec DiscrRange Cell
 discriminator :: DiscrState
               -> ArrayIndex
               -> (DiscrState, (Discr, Bool))
-discriminator (Discr {..}) index = ( Discr { prevIndex = index
+discriminator (Discr {..}) !index = ( Discr { prevIndex = index
                                            , curDiscr  = curDiscr'
                                            }
                                    , (curDiscr', newDiscr)
@@ -81,7 +82,7 @@ discriminator (Discr {..}) index = ( Discr { prevIndex = index
 inputBuffer :: InputState
             -> (Discr,DataInt,Shift)
             -> (InputState, (Cell,Cell))
-inputBuffer buf (discr, dataInt, shift) = (buf', (cell1, cell2))
+inputBuffer !buf (!discr, !dataInt, !shift) = (buf', (cell1, cell2))
   where
     -- Write new input value
     nextValids        = (map valid buf) <<+ True

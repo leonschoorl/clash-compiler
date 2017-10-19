@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 module I2C.BitMaster (bitMaster) where
 
 import Clash.Prelude
@@ -20,7 +21,7 @@ data BitMasterS
   , _dsclOen        :: Bool            -- delayed sclOen signal
   , _clkEn          :: Bool            -- statemachine clock enable
   , _slaveWait      :: Bool            -- clock generation signal
-  , _cnt            :: Unsigned 16     -- clock divider counter (synthesis)
+  , _cnt            :: !(Unsigned 16)     -- clock divider counter (synthesis)
   }
 
 makeLenses ''BitMasterS

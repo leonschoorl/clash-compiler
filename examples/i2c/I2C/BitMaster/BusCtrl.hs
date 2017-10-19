@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 module I2C.BitMaster.BusCtrl where
 
 import Clash.Prelude
@@ -15,7 +16,7 @@ data BusStatusCtrl
   , _al             :: Bool        -- internal arbitration lost signal
   , _cI2C           :: Vec 2 I2CIn -- capture SCL and SDA
   , _fI2C           :: Vec 3 I2CIn -- filter input for SCL and SDA
-  , _filterCnt      :: Unsigned 14 -- clock divider for filter
+  , _filterCnt      :: !(Unsigned 14) -- clock divider for filter
   , _startCondition :: Bool        -- start detected
   , _stopCondition  :: Bool        -- stop detected
   , _busy           :: Bool        -- internal busy signal
@@ -50,7 +51,7 @@ busStatusCtrl :: Bool
               -> Bool
               -> Bool
               -> State BusStatusCtrl ()
-busStatusCtrl rst ena clkCnt cmd clkEn i2cI bitStateM sdaChk sdaOen = do
+busStatusCtrl rst ena !clkCnt cmd clkEn i2cI bitStateM sdaChk sdaOen = do
   BusStatusCtrl {..} <- get
 
   -- capture SCL and SDA

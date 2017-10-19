@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
 module Fifo where
 
 import Clash.Prelude
@@ -12,19 +13,19 @@ fifo :: forall n e . (KnownNat n, KnownNat (n+1), KnownNat (n+1+1)
      => (Pntr n, Pntr n, Vec (2^n) e)
      -> (e, Bool, Bool)
      -> ((Pntr n,Pntr n,Vec (2^n) e),(Bool,Bool,e))
-fifo (rpntr, wpntr, elms) (datain,wrt,rd) = ((rpntr',wpntr',elms'),(full,empty,dataout))
+fifo (!rpntr, !wpntr, !elms) (!datain,!wrt,!rd) = ((rpntr',wpntr',elms'),(full,empty,dataout))
   where
-    wpntr' | wrt       = wpntr + 1
-           | otherwise = wpntr
-    rpntr' | rd        = rpntr + 1
-           | otherwise = rpntr
+    !wpntr' | wrt       = wpntr + 1
+            | otherwise = wpntr
+    !rpntr' | rd        = rpntr + 1
+            | otherwise = rpntr
 
-    mask  = resize (maxBound :: Unsigned n)
-    wind  = wpntr .&. mask
-    rind  = rpntr .&. mask
+    !mask  = resize (maxBound :: Unsigned n)
+    !wind  = wpntr .&. mask
+    !rind  = rpntr .&. mask
 
-    elms' | wrt       = replace wind datain elms
-          | otherwise = elms
+    !elms' | wrt       = replace wind datain elms
+           | otherwise = elms
 
     n = fromInteger $ snatToInteger (SNat :: SNat n)
 
@@ -32,13 +33,13 @@ fifo (rpntr, wpntr, elms) (datain,wrt,rd) = ((rpntr',wpntr',elms'),(full,empty,d
     full  = (testBit wpntr n) /= (testBit rpntr n) &&
             (wind == rind)
 
-    dataout = elms !! rind
+    !dataout = elms !! rind
 
 fifoL
   :: SystemClockReset
   => Signal System (Elm,Bool,Bool)
   -> Signal System (Bool,Bool,Elm)
-fifoL = fifo `mealy` (0,0,replicate d4 0)
+fifoL !a = fifo `mealy` (0,0,replicate d4 0) $ a
 
 topEntity = fifoL
 
