@@ -46,6 +46,7 @@ module Clash.Normalize.Transformations
   , caseCast
   , letCast
   , eliminateCastCast
+  , argCastSpec
   )
 where
 
@@ -82,7 +83,8 @@ import           Clash.Core.Subst
   (substBndr, substTm, substTms, substTyInTm, substTysinTm)
 import           Clash.Core.Term             (LetBinding, Pat (..), Term (..), TmOccName)
 import           Clash.Core.Type             (TypeView (..), applyFunTy,
-                                              applyTy, isPolyFunCoreTy,
+                                              applyTy, isIntegerTy,
+                                              isPolyFunCoreTy,
                                               splitFunTy, typeKind,
                                               tyView, undefinedTy)
 import           Clash.Core.TyCon            (tyConDataCons)
@@ -544,9 +546,9 @@ bindConstantVar = inlineBinders test
         _ -> return False
     -- test _ _ = return False
 
--- | Push a cast over a case into it's alternatives
+-- | Push a cast over a case into it's alternatives.
 caseCast :: NormRewrite
-caseCast _ (Cast (Case subj ty alts) ty1 ty2) = do
+caseCast _ c@(Cast (Case subj ty alts) ty1 ty2) | shouldPushDown c = do
   alts' <- mapM castAlt alts
   changed $ Case subj ty alts'
     where
@@ -557,10 +559,19 @@ caseCast _ e = return e
 
 -- | Push a cast over a Letrec into it's body
 letCast :: NormRewrite
-letCast _ (Cast (Letrec b) ty1 ty2) = do
+letCast _ c@(Cast (Letrec b) ty1 ty2) | shouldPushDown c = do
   let (binds,body) = unsafeUnbind b
   changed $ Letrec $ bind binds (Cast body ty1 ty2)
 letCast _ e = return e
+
+-- | Is this a 'Cast' that you be pushed down?
+shouldPushDown :: Term -> Bool
+shouldPushDown (Cast _ _ty1 ty2) = isIntegerTy ty2
+shouldPushDown _ = False
+
+argCastSpec :: NormRewrite
+argCastSpec ctx e@(App _ c@(Cast _ _ _)) | shouldPushDown c = specializeNorm ctx e
+argCastSpec _ e = return e
 
 -- | Only inline casts that just contain a 'Var', because these are guaranteed work-free.
 -- These are the result of the 'splitCast' transformation.

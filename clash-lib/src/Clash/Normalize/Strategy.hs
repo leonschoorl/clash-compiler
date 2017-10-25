@@ -67,6 +67,8 @@ constantPropgation = propagate >-> repeatR inlineAndPropagate >->
                                                   -- See: [Note] bottom-up traversal for liftNonRep
        , ("reduceNonRepPrim", reduceNonRepPrim)
 
+
+       , ("argCastSpec"     , argCastSpec)
        , ("caseCast"        , caseCast)
        , ("letCast"         , letCast)
        , ("splitCast"       , splitCast)
