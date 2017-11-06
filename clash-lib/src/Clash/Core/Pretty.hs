@@ -104,7 +104,10 @@ instance Pretty LitTy where
 
 instance Pretty Term where
   pprPrec prec e = case e of
-    Var _ x      -> pprPrec prec x
+    Var ty x      -> do
+      x'  <- pprPrec prec x
+      ty' <- pprPrec prec ty
+      return $ parens (x' <+> dcolon <+> ty')
     Data dc      -> pprPrec prec dc
     Literal l    -> pprPrec prec l
     Prim nm _    -> return $ text $ unpack nm
