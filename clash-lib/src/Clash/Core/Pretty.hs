@@ -205,7 +205,7 @@ pprPrecLetrec prec xes body
     xes'  <- mapM (\(x,e) -> do
                     x' <- pprBndr LetBind x
                     e' <- pprPrec noPrec (unembed e)
-                    return $ x' $$ equals <+> e'
+                    return $ hang x' 2 (equals <+> e')
                   ) xes
     return $ prettyParen (prec > noPrec) $
       hang (text "letrec") 2 (vcat xes') $$ text "in" <+> body'
