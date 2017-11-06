@@ -193,11 +193,18 @@ pprPrecTyApp prec e ty = do
 pprPrecCast :: LFresh m => Rational -> Term -> Type -> Type -> m Doc
 pprPrecCast prec e ty1 ty2 = do
   e' <- pprPrec appPrec e
-  ty1' <- pprType ty1
-  ty2' <- pprType ty2
+  ty1' <- parensIf (isFun ty1) <$> pprType ty1
+  ty2' <- parensIf (isFun ty2) <$> pprType ty2
   return $ prettyParen (prec >= appPrec) $
     parens (text "cast" $$ nest 5 (vcat [text "::" <+> ty1', text "->" <+> ty2']))
       $$ nest 2 e'
+  where
+    parensIf :: Bool -> Doc -> Doc
+    parensIf True = parens
+    parensIf _    = id
+    isFun :: Type -> Bool
+    isFun (tyView -> FunTy _ _) = True
+    isFun _ = False
 
 pprPrecLetrec :: LFresh m => Rational -> [(Id, Embed Term)] -> Term
   -> m Doc
