@@ -137,16 +137,16 @@ library
   C-Sources:          cbits/hschooks.c
 
   Exposed-Modules:    Clash.Main
+                      Clash.GHC.Evaluator
+                      Clash.GHC.GenerateBindings
+                      Clash.GHC.NetlistTypes
   Other-Modules:      Clash.GHCi.UI
                       Clash.GHCi.UI.Info
                       Clash.GHCi.UI.Monad
                       Clash.GHCi.UI.Tags
 
                       Clash.GHC.ClashFlags
-                      Clash.GHC.Evaluator
-                      Clash.GHC.GenerateBindings
                       Clash.GHC.GHC2Core
                       Clash.GHC.LoadInterfaceFiles
                       Clash.GHC.LoadModules
-                      Clash.GHC.NetlistTypes
                       Paths_clash_ghc
