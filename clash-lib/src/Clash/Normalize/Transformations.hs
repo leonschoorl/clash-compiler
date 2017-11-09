@@ -51,6 +51,7 @@ module Clash.Normalize.Transformations
 where
 
 import           Control.Concurrent.Supply   (splitSupply)
+import           Control.Exception           (throw)
 import qualified Control.Lens                as Lens
 import qualified Control.Monad               as Monad
 import           Control.Monad.Writer        (WriterT (..), lift, listen, tell)
@@ -84,7 +85,7 @@ import           Clash.Core.Subst
 import           Clash.Core.Term             (LetBinding, Pat (..), Term (..), TmOccName)
 import           Clash.Core.Type             (TypeView (..), applyFunTy,
                                               applyTy, isIntegerTy,
-                                              isPolyFunCoreTy,
+                                              isPolyFunCoreTy, normalizeType,
                                               splitFunTy, typeKind,
                                               tyView, undefinedTy)
 import           Clash.Core.TyCon            (tyConDataCons)
@@ -93,7 +94,7 @@ import           Clash.Core.Util
    isSignalType, isVar, mkApps, mkLams, mkTmApps, mkVec, termSize, termType,
    tyNatSize)
 import           Clash.Core.Var              (Id, Var (..))
-import           Clash.Driver.Types          (DebugLevel (..))
+import           Clash.Driver.Types          (DebugLevel (..), ClashException (..))
 import           Clash.Netlist.BlackBox.Util (usedArguments)
 import           Clash.Netlist.Util          (representableType,
                                               splitNormalized)
@@ -581,15 +582,23 @@ inlineCast = inlineBinders test
     test _ (_, Embed (Cast (Var _ _) _ _)) = return True
     test _ _ = return False
 
--- | Eleminate two back to back casts where the type going in and coming out are the same
+-- | Eliminate two back to back casts where the type going in and coming out are the same
 --
 -- @
 --   (cast :: b -> a) $ (cast :: a -> b) x   ==> x
 -- @
 eliminateCastCast :: NormRewrite
-eliminateCastCast _ c@(Cast (Cast e _ty1 ty2) ty3 _ty4)
-  | ty3 == ty2 = changed e
-  | otherwise = error $ $(curLoc) ++ "Found 2 nested casts whose types don't line up:\n" ++ showDoc c
+eliminateCastCast _ c@(Cast (Cast e tyA tyB) tyB' tyC)
+  | tyB == tyB' = do
+    tcm <- Lens.view tcCache
+    let tyA' = normalizeType tcm tyA
+        tyC' = normalizeType tcm tyC
+    if tyA' == tyC' then changed e
+                    else throwError
+  | otherwise = throwError
+  where throwError = do
+          (nm,sp) <- Lens.use curFun
+          throw (ClashException sp ($(curLoc) ++ showDoc nm ++ ": Found 2 nested casts whose types don't line up:\n" ++ showDoc c) Nothing)
 
 eliminateCastCast _ e = return e
 
