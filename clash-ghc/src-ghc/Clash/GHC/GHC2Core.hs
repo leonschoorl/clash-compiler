@@ -323,11 +323,7 @@ coreToTerm primMap unlocs srcsp coreExpr = Reader.runReaderT (term coreExpr) src
       ty2_I <- lift (isIntegerTy ty2)
       case hasPrimCoM of
         Just _ | ty1_I || ty2_I
-          -> do e' <- term e
-                ty1' <- lift (coreToType ty1)
-                ty2' <- lift (coreToType ty2)
-                let res = C.Cast e' ty1' ty2'
-                return res
+          -> C.Cast <$> term e <*> lift (coreToType ty1) <*> lift (coreToType ty2)
         _ -> term e
     term' (Tick _ e)        = term e
     term' (Type t)          = C.Prim (pack "_TY_") <$> lift (coreToType t)
