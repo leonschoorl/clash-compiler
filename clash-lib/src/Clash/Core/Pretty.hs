@@ -196,19 +196,19 @@ pprPrecCast prec e ty1 ty2 = do
     parens (text "cast" $$ nest 5 (vcat [text "::" <+> ty1', text "->" <+> ty2']))
       $$ nest 2 e'
 
-pprPrecLetrec :: LFresh m => Rational -> [(Id, Embed Term)] -> Term
-  -> m Doc
-pprPrecLetrec prec xes body
-  --  | [] <- xes = pprPrec prec body -- this hides empty letrec's from the ppr output
-  | otherwise = do
-    body' <- pprPrec noPrec body
-    xes'  <- mapM (\(x,e) -> do
-                    x' <- pprBndr LetBind x
-                    e' <- pprPrec noPrec (unembed e)
-                    return $ x' $$ equals <+> e'
-                  ) xes
-    return $ prettyParen (prec > noPrec) $
-      hang (text "letrec") 2 (vcat xes') $$ text "in" <+> body'
+pprPrecLetrec :: LFresh m => Rational -> [(Id, Embed Term)] -> Term -> m Doc
+pprPrecLetrec prec xes body = do
+  body' <- pprPrec noPrec body
+  xes'  <- mapM (\(x,e) -> do
+                  x' <- pprBndr LetBind x
+                  e' <- pprPrec noPrec (unembed e)
+                  return $ x' $$ equals <+> e'
+                ) xes
+  let xes'' = case xes' of
+                [] -> [text "EmptyLetrec"]
+                _  -> xes'
+  return $ prettyParen (prec > noPrec) $
+    hang (text "letrec") 2 (vcat xes'') $$ text "in" <+> body'
 
 pprPrecCase :: LFresh m => Rational -> Term -> [(Pat,Term)] -> m Doc
 pprPrecCase prec e alts = do
