@@ -41,7 +41,7 @@ module Clash.Normalize.Transformations
   , removeUnusedExpr
   , inlineCleanup
   , flattenLet
-  , splitCast
+  , splitCastWork
   , inlineCast
   , caseCast
   , letCast
@@ -575,7 +575,7 @@ argCastSpec ctx e@(App _ c@(Cast _ _ _)) | shouldPushDown c = specializeNorm ctx
 argCastSpec _ e = return e
 
 -- | Only inline casts that just contain a 'Var', because these are guaranteed work-free.
--- These are the result of the 'splitCast' transformation.
+-- These are the result of the 'splitCastWork' transformation.
 inlineCast :: NormRewrite
 inlineCast = inlineBinders test
   where
@@ -602,36 +602,38 @@ eliminateCastCast _ c@(Cast (Cast e tyA tyB) tyB' tyC)
 
 eliminateCastCast _ e = return e
 
--- | Split a cast
+-- | Make a cast work-free by splitting the work of to a separate binding
 --
 -- @
--- let x = e |> y
+-- let x = cast (f a b)
 -- ==>
--- let x  = x' |> y
---     x' = e
+-- let x  = cast x'
+--     x' = f a b
 -- @
-splitCast :: NormRewrite
-splitCast ctx e@(Letrec b) = do
+splitCastWork :: NormRewrite
+splitCastWork ctx unchanged@(Letrec b) = do
   (v,e') <- unbind b
   let vs = unrec v
-  (vss, Monoid.getAny -> hasChanged) <- listen (mapM (splitCastLetBinding ctx) vs)
-  let vs' = concat vss
+  (vss', Monoid.getAny -> hasChanged) <- listen (mapM splitCastLetBinding vs)
+  let vs' = concat vss'
   if hasChanged then changed . Letrec $ bind (rec vs') (e')
-                else return e
-splitCast _ e = return e
+                else return unchanged
+  where
+    splitCastLetBinding :: LetBinding -> RewriteMonad extra [LetBinding]
+    splitCastLetBinding x@(nm, Embed e) = case e of
+      Cast (Var _ _) _ _    -> return [x]  -- already work-free
+      Cast (Cast _ _ _) _ _ -> return [x]  -- casts will be eliminated
+      Cast e' ty1 ty2 -> do
+        tcm <- Lens.view tcCache
+        (nm',var) <- mkTmBinderFor tcm (mkDerivedName ctx (name2String $ varName nm)) e'
+        changed [(nm',Embed e')
+                ,(nm, Embed $ Cast var ty1 ty2)
+                ]
+      _ -> return [x]
+
+splitCastWork _ e = return e
 
 
-splitCastLetBinding :: [CoreContext] -> LetBinding -> RewriteMonad extra [LetBinding]
-splitCastLetBinding ctx x@(nm, Embed e) = case e of
-  Cast (Var _ _) _ _ -> return [x]
-  Cast (Cast _ _ _) _ _ -> return [x]
-  Cast e' ty1 ty2 -> do
-    tcm <- Lens.view tcCache
-    (nm',var) <- mkTmBinderFor tcm (mkDerivedName ctx (name2String $ varName nm)) e'
-    changed [(nm',Embed e')
-            ,(nm, Embed $ Cast var ty1 ty2)
-            ]
-  _ -> return [x]
 
 
 -- | Inline work-free functions, i.e. fully applied functions that evaluate to

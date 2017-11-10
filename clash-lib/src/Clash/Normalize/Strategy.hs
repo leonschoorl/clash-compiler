@@ -71,7 +71,7 @@ constantPropgation = propagate >-> repeatR inlineAndPropagate >->
        , ("argCastSpec"     , argCastSpec)
        , ("caseCast"        , caseCast)
        , ("letCast"         , letCast)
-       , ("splitCast"       , splitCast)
+       , ("splitCastWork"   , splitCastWork)
        , ("inlineCast"      , inlineCast)
        , ("eliminateCastCast",eliminateCastCast)
        ]
