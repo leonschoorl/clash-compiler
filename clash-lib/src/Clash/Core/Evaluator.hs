@@ -11,6 +11,7 @@
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE ViewPatterns      #-}
 
 module Clash.Core.Evaluator where
@@ -24,6 +25,7 @@ import           Data.List
 import           Data.Map
   (Map,delete,fromList,insert,lookup,union)
 import           Data.Text                               (Text)
+import           Debug.Trace                             (trace)
 import           Clash.Core.DataCon
 import           Clash.Core.Literal
 import           Clash.Core.Name
@@ -36,6 +38,7 @@ import           Clash.Core.Util
 import           Clash.Core.Var
 import           Clash.Driver.Types                      (BindingMap)
 import           Prelude                                 hiding (lookup)
+import           Clash.Util                              (curLoc)
 import           Unbound.Generics.LocallyNameless
 import           Unbound.Generics.LocallyNameless.Unsafe
 
@@ -54,7 +57,6 @@ data StackFrame
   | Instantiate Type
   | PrimApply  Text Type [Type] [Value] [Term]
   | Scrutinise Type [Alt]
-  | CastTo Type Type
   deriving Show
 
 -- Values
@@ -149,8 +151,6 @@ unwindStack (h@(Heap h' _),(kf:k'),e) = case kf of
     unwindStack (h,k',e)
   Scrutinise ty alts ->
     unwindStack (h,k',Case e ty alts)
-  CastTo ty1 ty2 ->
-    unwindStack (h,k',Cast e ty1 ty2)
   _ -> error (show kf)
 
 {- [Note: forcing special primitives]
@@ -235,7 +235,8 @@ step eval gbl tcm (h, k, e) = case e of
   (TyApp e1 ty) -> Just (h,Instantiate ty:k,e1)
   (Case scrut ty alts) -> Just (h,Scrutinise ty alts:k,scrut)
   (Letrec bs)   -> Just (allocate h k bs)
-  Cast e' ty1 ty2 -> Just (h,CastTo ty1 ty2:k,e')
+  Cast _ _ _ -> trace (unlines ["WARNING: " ++ $(curLoc) ++ "Clash currently can't symbolically evaluate casts"
+                                    ,"If you have testcase that produces this message, please open an issue about it."]) Nothing
 
 newLetBinding
   :: TyConMap
@@ -301,10 +302,6 @@ unwind eval gbl tcm h k v = do
     Instantiate ty               -> return (instantiate h k' v ty)
     PrimApply nm ty tys vals tms -> primop eval gbl tcm h k' nm ty tys vals v tms
     Scrutinise _ alts            -> return (scrutinise h k' v alts)
-    CastTo ty1 ty2               -> return (castTo h k' v ty1 ty2)
-
-castTo :: Heap -> Stack -> Value -> Type -> Type -> State
-castTo h k v ty1 ty2 = (h, k, Cast (valToTerm v) ty1 ty2)
 
 -- | Update the Heap with the evaluated term
 update :: Heap -> Stack -> Id -> Value -> State
