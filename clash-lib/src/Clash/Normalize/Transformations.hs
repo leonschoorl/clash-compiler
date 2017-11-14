@@ -85,7 +85,7 @@ import           Clash.Core.Subst
   (substBndr, substTm, substTms, substTyInTm, substTysinTm)
 import           Clash.Core.Term             (LetBinding, Pat (..), Term (..), TmOccName)
 import           Clash.Core.Type             (TypeView (..), applyFunTy,
-                                              applyTy, isIntegerTy,
+                                              applyTy,
                                               isPolyFunCoreTy, normalizeType,
                                               splitFunTy, typeKind,
                                               tyView, undefinedTy)
@@ -550,7 +550,7 @@ bindConstantVar = inlineBinders test
 
 -- | Push a cast over a case into it's alternatives.
 caseCast :: NormRewrite
-caseCast _ c@(Cast (Case subj ty alts) ty1 ty2) | shouldPushDown c = do
+caseCast _ (Cast (Case subj ty alts) ty1 ty2) = do
   alts' <- mapM castAlt alts
   changed $ Case subj ty alts'
     where
@@ -561,15 +561,11 @@ caseCast _ e = return e
 
 -- | Push a cast over a Letrec into it's body
 letCast :: NormRewrite
-letCast _ c@(Cast (Letrec b) ty1 ty2) | shouldPushDown c = do
+letCast _ (Cast (Letrec b) ty1 ty2) = do
   let (binds,body) = unsafeUnbind b
   changed $ Letrec $ bind binds (Cast body ty1 ty2)
 letCast _ e = return e
 
--- | Is this a 'Cast' that you be pushed down?
-shouldPushDown :: Term -> Bool
-shouldPushDown (Cast _ _ty1 ty2) = isIntegerTy ty2
-shouldPushDown _ = False
 
 -- | Push cast over an argument to a funtion into that function
 --
@@ -585,7 +581,7 @@ shouldPushDown _ = False
 --     where f' x' = (\x -> g x) (cast x')
 -- @
 argCastSpec :: NormRewrite
-argCastSpec ctx e@(App _ c@(Cast e' _ _)) | shouldPushDown c = case e' of
+argCastSpec ctx e@(App _ (Cast e' _ _)) = case e' of
   Var _ _ -> go
   Cast (Var _ _) _ _ -> go
   _ -> warn go
