@@ -66,6 +66,7 @@ import qualified Data.Monoid                 as Monoid
 import qualified Data.Set                    as Set
 import qualified Data.Set.Lens               as Lens
 import           Data.Text                   (Text, unpack)
+import           Debug.Trace                 (trace)
 import           Unbound.Generics.LocallyNameless
   (Bind, Embed (..), bind, embed, rec, unbind, unembed, unrebind, unrec)
 import           Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
@@ -570,8 +571,33 @@ shouldPushDown :: Term -> Bool
 shouldPushDown (Cast _ _ty1 ty2) = isIntegerTy ty2
 shouldPushDown _ = False
 
+-- | Push cast over an argument to a funtion into that function
+--
+-- This is done by specializing on the casted argument.
+-- Example:
+-- @
+--   y = f (cast a)
+--     where f x = g x
+-- @
+-- transforms to:
+-- @
+--   y = f' a
+--     where f' x' = (\x -> g x) (cast x')
+-- @
 argCastSpec :: NormRewrite
-argCastSpec ctx e@(App _ c@(Cast _ _ _)) | shouldPushDown c = specializeNorm ctx e
+argCastSpec ctx e@(App _ c@(Cast e' _ _)) | shouldPushDown c = case e' of
+  Var _ _ -> go
+  Cast (Var _ _) _ _ -> go
+  _ -> warn go
+  where
+    go = specializeNorm ctx e
+    warn = trace (unlines ["WARNING: " ++ $(curLoc) ++ "specializing a function on a possibly non work-free cast."
+                          ,"Generated HDL implementation might contain duplicate work."
+                          ,"Please report this as a bug."
+                          ,""
+                          ,"Expression where this occurs:"
+                          ,showDoc e
+                          ])
 argCastSpec _ e = return e
 
 -- | Only inline casts that just contain a 'Var', because these are guaranteed work-free.
