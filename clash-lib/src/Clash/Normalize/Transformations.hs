@@ -620,7 +620,10 @@ eliminateCastCast _ c@(Cast (Cast e tyA tyB) tyB' tyC)
   | otherwise = throwError
   where throwError = do
           (nm,sp) <- Lens.use curFun
-          throw (ClashException sp ($(curLoc) ++ showDoc nm ++ ": Found 2 nested casts whose types don't line up:\n" ++ showDoc c) Nothing)
+          throw (ClashException sp ($(curLoc) ++ showDoc nm
+                  ++ ": Found 2 nested casts whose types don't line up:\n"
+                  ++ showDoc c)
+                Nothing)
 
 eliminateCastCast _ e = return e
 
@@ -654,8 +657,6 @@ splitCastWork ctx unchanged@(Letrec b) = do
       _ -> return [x]
 
 splitCastWork _ e = return e
-
-
 
 
 -- | Inline work-free functions, i.e. fully applied functions that evaluate to
