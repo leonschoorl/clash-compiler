@@ -610,14 +610,14 @@ inlineCast = inlineBinders test
 --   (cast :: b -> a) $ (cast :: a -> b) x   ==> x
 -- @
 eliminateCastCast :: NormRewrite
-eliminateCastCast _ c@(Cast (Cast e tyA tyB) tyB' tyC)
-  | tyB == tyB' = do
-    tcm <- Lens.view tcCache
-    let tyA' = normalizeType tcm tyA
-        tyC' = normalizeType tcm tyC
-    if tyA' == tyC' then changed e
-                    else throwError
-  | otherwise = throwError
+eliminateCastCast _ c@(Cast (Cast e tyA tyB) tyB' tyC) = do
+  tcm <- Lens.view tcCache
+  let ntyA  = normalizeType tcm tyA
+      ntyB  = normalizeType tcm tyB
+      ntyB' = normalizeType tcm tyB'
+      ntyC  = normalizeType tcm tyC
+  if ntyB == ntyB' && ntyA == ntyC then changed e
+                                   else throwError
   where throwError = do
           (nm,sp) <- Lens.use curFun
           throw (ClashException sp ($(curLoc) ++ showDoc nm
