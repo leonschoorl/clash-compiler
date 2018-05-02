@@ -59,7 +59,7 @@ import           Clash.Normalize.Util
 import           Clash.Primitives.Types           (PrimMap)
 import           Clash.Rewrite.Combinators        ((>->),(!->))
 import           Clash.Rewrite.Types
-  (RewriteEnv (..), RewriteState (..), bindings, curFun, dbgLevel, extra,
+  (CallGraph, RewriteEnv (..), RewriteState (..), bindings, curFun, dbgLevel, extra,
    tcCache, topEntities, typeTranslator)
 import           Clash.Rewrite.Util               (isUntranslatableType,
                                                    runRewrite,
@@ -89,11 +89,12 @@ runNormalization
   -- ^ Map telling whether a components is part of a recursive group
   -> [TmOccName]
   -- ^ topEntities
+  -> CallGraph
   -> NormalizeSession a
   -- ^ NormalizeSession to run
   -> a
-runNormalization opts supply globals typeTrans tcm tupTcm eval primMap rcsMap topEnts
-  = callGr `seq` runRewriteSession rwEnv rwState
+runNormalization opts supply globals typeTrans tcm tupTcm eval primMap rcsMap topEnts callGr
+  = {- callGr `seq` -} runRewriteSession rwEnv rwState
   where
     rwEnv     = RewriteEnv
                   (opt_dbgLevel opts)
@@ -113,11 +114,11 @@ runNormalization opts supply globals typeTrans tcm tupTcm eval primMap rcsMap to
                   normState
                   callGr
 
-    callGr =      (case topEnts of
-                    [topEnt] -> callGraph globals topEnt
-                    []       -> error ($(curLoc) ++ " no topEnts")
-                    _        -> error ($(curLoc) ++ " more then one topEnts: " ++ show topEnts)
-                  )
+    -- callGr =      (case topEnts of
+    --                 [topEnt] -> callGraph globals topEnt
+    --                 []       -> error ($(curLoc) ++ " no topEnts")
+    --                 _        -> error ($(curLoc) ++ " more then one topEnts: " ++ show topEnts)
+    --               )
     normState = NormalizeState
                   HashMap.empty
                   Map.empty

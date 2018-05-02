@@ -66,6 +66,7 @@ import           Clash.Normalize                  (checkNonRecursive, cleanupGra
                                                    normalize, runNormalization)
 import           Clash.Normalize.Util             (callGraph)
 import           Clash.Primitives.Types
+import           Clash.Rewrite.Types              (CallGraph)
 import           Clash.Util                       (first, second)
 
 -- | Create a set of target HDL files for a set of functions
@@ -124,13 +125,14 @@ generateHDL bindingsMap hdlState primMap tcm tupTcm typeTrans eval topEntities
       topNm     = maybe topName
                         (Text.pack . t_name)
                         annM
-
+      topCallgraph    =      (callGraph bindingsMap . nameOcc) topEntity
+      benchCallgraphM = fmap (callGraph bindingsMap . nameOcc) benchM
   unless (opt_cachehdl opts) $ putStrLn "Ignoring .manifest files"
 
   -- Calculate the hash over the callgraph and the topEntity annotation
   (sameTopHash,sameBenchHash,manifest) <- do
-    let topHash    = hash (annM,callGraphBindings bindingsMap (nameOcc topEntity))
-        benchHashM = fmap (hash . (annM,) . callGraphBindings bindingsMap . nameOcc) benchM
+    let topHash    = hash (annM,callGraphBindings bindingsMap topCallgraph)
+        benchHashM = fmap (hash . (annM,) . callGraphBindings bindingsMap) benchCallgraphM
         manifestI  = Manifest (topHash,benchHashM) [] [] [] [] []
 
         manFile = maybe (hdlDir </> Text.unpack topNm <.> "manifest")
@@ -162,7 +164,7 @@ generateHDL bindingsMap hdlState primMap tcm tupTcm typeTrans eval topEntities
       -- 1. Normalise topEntity
       let transformedBindings = normalizeEntity bindingsMap primMap' tcm tupTcm
                                   typeTrans eval topEntityNames opts supplyN
-                                  (nameOcc topEntity)
+                                  (nameOcc topEntity) topCallgraph
 
       normTime <- transformedBindings `deepseq` Clock.getCurrentTime
       let prepNormDiff = Clock.diffUTCTime normTime prevTime
@@ -200,10 +202,10 @@ generateHDL bindingsMap hdlState primMap tcm tupTcm typeTrans eval topEntities
 
       let modName'  = Text.unpack (genComponentName [] mkId tb)
           hdlState2 = setModName modName' hdlState'
-
+          Just benchCallgraph = benchCallgraphM
       -- 1. Normalise testBench
       let transformedBindings = normalizeEntity bindingsMap primMap' tcm tupTcm
-                                  typeTrans eval topEntityNames opts supplyTB (nameOcc tb)
+                                  typeTrans eval topEntityNames opts supplyTB (nameOcc tb) benchCallgraph
       normTime <- transformedBindings `deepseq` Clock.getCurrentTime
       let prepNormDiff = Clock.diffUTCTime normTime topTime
       putStrLn $ "Testbench normalisation took " ++ show prepNormDiff
@@ -361,13 +363,11 @@ copyDataFiles idirs dir = mapM_ (copyFile' idirs)
 callGraphBindings
   :: BindingMap
   -- ^ All bindings
-  -> TmOccName
-  -- ^ Root of the call graph
+  -> CallGraph
+  -- ^ the call graph
   -> [Term]
-callGraphBindings bindingsMap tm =
+callGraphBindings bindingsMap cg =
   map ((^. _5) . (bindingsMap HM.!)) (HM.keys cg)
-  where
-    cg = callGraph bindingsMap tm
 
 -- | Normalize a complete hierarchy
 normalizeEntity
@@ -391,13 +391,14 @@ normalizeEntity
   -- ^ Unique supply
   -> TmOccName
   -- ^ root of the hierarchy
+  -> CallGraph
   -> BindingMap
 normalizeEntity bindingsMap primMap tcm tupTcm typeTrans eval topEntities
-  opts supply tm = transformedBindings
+  opts supply tm callGr = transformedBindings
   where
     doNorm = do norm <- normalize [tm]
                 let normChecked = checkNonRecursive norm
                 cleanupGraph tm normChecked
     transformedBindings = runNormalization opts supply bindingsMap
                             typeTrans tcm tupTcm eval primMap HML.empty
-                            topEntities doNorm
+                            topEntities callGr doNorm
