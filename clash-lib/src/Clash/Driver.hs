@@ -67,7 +67,7 @@ import           Clash.Normalize                  (checkNonRecursive, cleanupGra
 import           Clash.Normalize.Util             (callGraph)
 import           Clash.Primitives.Types
 import           Clash.Rewrite.Types              (CallGraph)
-import           Clash.Util                       (first, second)
+import           Clash.Util                       (first, second, shout)
 
 -- | Create a set of target HDL files for a set of functions
 generateHDL
@@ -162,7 +162,7 @@ generateHDL bindingsMap hdlState primMap tcm tupTcm typeTrans eval topEntities
       return (topTime,manifest,componentNames manifest ++ seen)
     else do
       -- 1. Normalise topEntity
-      let transformedBindings = normalizeEntity bindingsMap primMap' tcm tupTcm
+      let transformedBindings = topCallgraph `seq` normalizeEntity bindingsMap primMap' tcm tupTcm
                                   typeTrans eval topEntityNames opts supplyN
                                   (nameOcc topEntity) topCallgraph
 
@@ -394,7 +394,7 @@ normalizeEntity
   -> CallGraph
   -> BindingMap
 normalizeEntity bindingsMap primMap tcm tupTcm typeTrans eval topEntities
-  opts supply tm callGr = transformedBindings
+  opts supply tm callGr = {- shout ("running normalizeEntity on: " ++ show tm) -} transformedBindings
   where
     doNorm = do norm <- normalize [tm]
                 let normChecked = checkNonRecursive norm

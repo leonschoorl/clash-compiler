@@ -17,3 +17,4 @@ repository head.hackage
 -- state by running `cabal update` twice and looking at the index state it
 -- displays to you (as the second update will be a no-op)
 index-state: 2018-03-18T09:48:18Z
+-- index-state: 2018-05-02T14:04:11Z

@@ -105,7 +105,7 @@ import           Clash.Netlist.Util
 import           Clash.Normalize.DEC
 import           Clash.Normalize.PrimitiveReductions
 import           Clash.Normalize.Types
-import           Clash.Normalize.Util
+import           Clash.Normalize.Util        hiding (callGraph)
 import           Clash.Primitives.Types      (Primitive (..), PrimMap)
 import           Clash.Rewrite.Combinators
 import           Clash.Rewrite.Types
@@ -792,7 +792,12 @@ inlineSmall _ e@(collectArgs -> (Var _ (nameOcc -> f),args)) = do
         Just (_,_,_,inl,body) -> do
           isRecBndr <- isRecursiveBndr f
           if not isRecBndr && inl /= NoInline && termSize body < sizeLimit
-             then changed (mkApps body args)
+             then do
+               calls <- HashMap.lookupDefault HashMap.empty f <$> Lens.use callGraph
+               addCallsToM calls
+               removeCallToM f
+               -- TODO add new calls
+               changed (mkApps body args )
              else return e
         _ -> return e
 

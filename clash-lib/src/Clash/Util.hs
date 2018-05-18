@@ -241,3 +241,7 @@ clogBase x y | x > 1 && y > 0 =
                 then Just (I# (z1 +# 1#))
                 else Just (I# z1)
 clogBase _ _ = Nothing
+
+shout :: String -> a -> a
+shout msg = trace (unlines [line,msg,line,""])
+  where line = replicate 80 '='

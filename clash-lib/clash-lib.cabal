@@ -124,7 +124,8 @@ Library
                       time                    >= 1.4.0.1  && < 1.9,
                       transformers            >= 0.3.0.0  && < 0.6,
                       trifecta                >= 1.7.1.1  && < 2.0,
-                      unbound-generics        >= 0.1      && < 0.4,
+-- unbound-generics 0.3.1 fails to build on ghc-8.4
+                      unbound-generics        >= 0.3.2    && < 0.4,
                       unordered-containers    >= 0.2.3.3  && < 0.3
 
   Exposed-modules:    Clash.Backend

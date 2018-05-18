@@ -11,7 +11,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns    #-}
 
-module Clash.Normalize where
+module Clash.Normalize -- (checkNonRecursive, cleanupGraph, normalize, runNormalization) 
+where
 
 import           Control.Concurrent.Supply        (Supply)
 import           Control.Lens                     ((.=),(^.),_2,_5)

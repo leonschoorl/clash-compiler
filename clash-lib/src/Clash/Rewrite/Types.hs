@@ -16,13 +16,13 @@
 module Clash.Rewrite.Types where
 
 import Control.Concurrent.Supply             (Supply, freshId)
-import Control.Lens                          (use, (.=), (<<%=))
+import Control.Lens                          (use, (.=), (<<%=), (%=), _1)
 import Control.Monad
 import Control.Monad.Fix                     (MonadFix (..), fix)
 import Control.Monad.Reader                  (MonadReader (..))
 import Control.Monad.State                   (MonadState (..))
 import Control.Monad.Writer                  (MonadWriter (..))
-import Data.HashMap.Strict                   (HashMap, alter, insertWith, singleton)
+import Data.HashMap.Strict                   (HashMap, alter, insertWith, singleton, unionWith)
 import Data.HashSet                          (HashSet)
 import Data.IntMap.Strict                    (IntMap)
 import Data.Monoid                           (Any)
@@ -32,6 +32,7 @@ import Unbound.Generics.LocallyNameless.Name (Name (..))
 import SrcLoc (SrcSpan)
 
 import Clash.Core.Evaluator      (PrimEvaluator)
+import Clash.Core.Name           (nameOcc)
 import Clash.Core.Term           (Term, TmName, TmOccName)
 import Clash.Core.Type           (Type)
 import Clash.Core.TyCon          (TyCon, TyConName, TyConOccName)
@@ -39,6 +40,8 @@ import Clash.Core.Var            (Id, TyVar)
 import Clash.Driver.Types        (BindingMap, DebugLevel)
 import Clash.Netlist.Types       (HWType)
 import Clash.Util
+
+import Clash.Core.Pretty
 
 -- | Context in which a term appears
 data CoreContext
@@ -69,20 +72,28 @@ addCall cg f g = alter addCallTo f cg
       Nothing -> Just $ singleton g 1
       Just h  -> Just $ insertWith (+) g 1 h
 
+addCalls :: CallGraph -> TmOccName -> HashMap TmOccName Word -> CallGraph
+addCalls cg f calls = insertWith (unionWith (+)) f calls cg
+
+
+-- TODO remove g if it's not called anymore?
 -- | Remove a call from f to g from the graph
 removeCall :: CallGraph -> TmOccName -> TmOccName -> CallGraph
-removeCall cg f g = alter removeCallTo f cg
+removeCall cg f g = shout ("removing call : " ++ showDoc f ++ " to " ++ showDoc g)
+  alter removeCallTo f cg
   where
-    notFound = "Error can't remove a call from " ++ show f
+    notFound = "ERROR can't remove a call from " ++ show f
                ++ " to " ++ show g ++ ", because there are none."
     removeCallTo :: Maybe (HashMap TmOccName Word) -> Maybe (HashMap TmOccName Word)
     removeCallTo hm = case hm of
-      Nothing -> error $ $(curLoc) ++ notFound
+      -- Nothing -> error $ $(curLoc) ++ notFound
+      Nothing -> shout ($(curLoc) ++ notFound) Nothing
       Just h  -> let h' = alter removeCallTo2 g h
                  in if null h' then Nothing else Just h'
     removeCallTo2 :: Maybe Word -> Maybe Word
     removeCallTo2 wm = case wm of
-      Nothing -> error $ $(curLoc) ++ notFound
+      -- Nothing -> error $ $(curLoc) ++ notFound
+      Nothing -> shout ($(curLoc) ++ notFound) Nothing
       Just w  -> case w-1 of
                    0  -> Nothing
                    w' -> Just w'
@@ -102,7 +113,7 @@ data RewriteState extra
   -- ^ Used for 'Fresh'
   , _extra            :: !extra
   -- ^ Additional state
-  , _callGraph        :: CallGraph
+  , _callGraph        :: CallGraph -- TODO add ! ?
   -- ^ Call graph
   }
 
@@ -190,3 +201,35 @@ type Transform m = [CoreContext] -> Term -> m Term
 
 -- | A 'Transform' action in the context of the 'RewriteMonad'
 type Rewrite extra = Transform (RewriteMonad extra)
+
+removeCallM :: TmOccName -> TmOccName -> RewriteMonad extra ()
+removeCallM f g = do
+  -- callGraph %= (\gr -> removeCall gr f g)
+  graph <- use callGraph
+  let graph' = removeCall graph f g
+  callGraph .= graph'
+  graph' `seq` return ()
+
+removeCallToM :: TmOccName -> RewriteMonad extra ()
+removeCallToM g =
+  do
+    f <- nameOcc <$> use (curFun . _1)
+    removeCallM f g
+
+addCallM :: TmOccName -> TmOccName -> RewriteMonad extra ()
+addCallM f g = callGraph %= (\gr -> addCall gr f g)
+
+addCallToM :: TmOccName -> RewriteMonad extra ()
+addCallToM g =
+  do
+    f <- nameOcc <$> use (curFun . _1)
+    addCallM f g
+
+addCallsM :: TmOccName -> HashMap TmOccName Word -> RewriteMonad extra ()
+addCallsM f calls = callGraph %= (\gr -> addCalls gr f calls)
+
+addCallsToM :: HashMap TmOccName Word -> RewriteMonad extra ()
+addCallsToM calls =
+  do
+    f <- nameOcc <$> use (curFun . _1)
+    addCallsM f calls

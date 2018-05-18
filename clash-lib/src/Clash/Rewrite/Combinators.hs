@@ -84,7 +84,15 @@ infixr 6 >->
 -- | Apply two transformations in succession
 (>->) :: Monad m => Transform m -> Transform m -> Transform m
 (>->) r1 r2 c = r1 c >=> r2 c
+{-
 
+f >=> g     = \x -> f x >>= g
+
+(>->) r1 r2 c = r1 c >=> r2 c
+(>->) r1 r2 c = \x -> (r1 c x) >=> (r2 c)
+
+
+-}
 infixr 6 >-!->
 -- | Apply two transformations in succession, and perform a deepseq in between.
 (>-!->) :: Monad m => Transform m -> Transform m -> Transform m

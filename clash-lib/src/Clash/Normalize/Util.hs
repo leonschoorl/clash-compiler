@@ -31,6 +31,9 @@ import           Clash.Normalize.Types
 import           Clash.Rewrite.Types     (CallGraph, bindings,extra,tcCache)
 import           Clash.Rewrite.Util      (specialise)
 
+import Clash.Util
+import Text.Printf
+
 -- | Determine if a function is already inlined in the context of the 'NetlistMonad'
 alreadyInlined
   :: TmOccName
@@ -109,7 +112,7 @@ callGraph
   :: BindingMap
   -> TmOccName
   -> CallGraph
-callGraph bndrs = go HashMap.empty
+callGraph bndrs tm = let res = go HashMap.empty tm in shout ("calculating callGraph for " ++ show tm ++ ":\n" ++ pprCallGraph res) res
   where
     go cg root
       | Nothing     <- HashMap.lookup root cg
@@ -121,6 +124,18 @@ callGraph bndrs = go HashMap.empty
           cg'  = HashMap.insert root used cg
       in  List.foldl' go cg' (HashMap.keys used)
     go cg _ = cg
+
+pprCallGraph :: CallGraph -> String
+pprCallGraph gr = go $ map (fmap HashMap.toList) $ HashMap.toList gr
+  where
+    go :: [(TmOccName,[(TmOccName,Word)])] -> String
+    go [] = ""
+    go ((nm,calls):rest)
+      = show nm ++ "  calls:\n"
+        ++ pprCalls calls ++ go rest
+    pprCalls [] = "\n"
+    pprCalls ((nm,cnt):rest) = printf "%3dx %s\n" cnt (show nm) ++ pprCalls rest
+
 
 -- | Give a "performance/size" classification of a function in normal form.
 classifyFunction
