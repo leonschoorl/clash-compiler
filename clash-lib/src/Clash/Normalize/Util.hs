@@ -105,11 +105,11 @@ isRecursiveBndr f = do
           return isR
 
 -- | Create a call graph for a set of global binders, given a root
-callGraph
+createCallGraph
   :: BindingMap
   -> TmOccName
   -> CallGraph
-callGraph bndrs = go HashMap.empty
+createCallGraph bndrs = go HashMap.empty
   where
     go cg root
       | Nothing     <- HashMap.lookup root cg

@@ -64,7 +64,7 @@ import           Clash.Netlist.BlackBox.Types     (BlackBoxTemplate)
 import           Clash.Netlist.Types              (Component (..), HWType)
 import           Clash.Normalize                  (checkNonRecursive, cleanupGraph,
                                                    normalize, runNormalization)
-import           Clash.Normalize.Util             (callGraph)
+import           Clash.Normalize.Util             (createCallGraph)
 import           Clash.Primitives.Types
 import           Clash.Rewrite.Types              (CallGraph)
 import           Clash.Util                       (first, second)
@@ -125,8 +125,8 @@ generateHDL bindingsMap hdlState primMap tcm tupTcm typeTrans eval topEntities
       topNm     = maybe topName
                         (Text.pack . t_name)
                         annM
-      topCallgraph    =      (callGraph bindingsMap . nameOcc) topEntity
-      benchCallgraphM = fmap (callGraph bindingsMap . nameOcc) benchM
+      topCallgraph    =      (createCallGraph bindingsMap . nameOcc) topEntity
+      benchCallgraphM = fmap (createCallGraph bindingsMap . nameOcc) benchM
   unless (opt_cachehdl opts) $ putStrLn "Ignoring .manifest files"
 
   -- Calculate the hash over the callgraph and the topEntity annotation
