@@ -1,0 +1,12 @@
+resolver: lts-2.22
+
+packages:
+- 'clash-lib'
+- 'clash-ghc'
+- '../clash-prelude'
+
+extra-deps:
+- unbound-0.5.1
+- uu-parsinglib-2.9.1.1
+- RepLib-0.5.4
+- uu-interleaved-0.2.0.0
