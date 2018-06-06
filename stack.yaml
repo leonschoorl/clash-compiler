@@ -3,7 +3,7 @@ resolver: lts-2.22
 packages:
 - 'clash-lib'
 - 'clash-ghc'
-- '../clash-prelude'
+- 'clash-prelude'
 
 extra-deps:
 - unbound-0.5.1
