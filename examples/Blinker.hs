@@ -1,4 +1,3 @@
-{-# LANGUAGE NoMonoLocalBinds #-}
 module Blinker where
 
 import Clash.Prelude
