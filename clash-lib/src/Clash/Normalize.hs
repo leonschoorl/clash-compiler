@@ -11,11 +11,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns    #-}
 
-module Clash.Normalize where
+module Clash.Normalize -- (checkNonRecursive, cleanupGraph, normalize, runNormalization)
+where
 
 import           Control.Concurrent.Supply        (Supply)
-import           Control.Lens                     ((.=),(^.),_2,_5)
+import           Control.Lens                     ((.=),(^.),(&),(.~),_2,_5)
 import qualified Control.Lens                     as Lens
+import           Control.Monad                    (when)
 import           Data.Either                      (partitionEithers)
 import           Data.HashMap.Strict              (HashMap)
 import qualified Data.HashMap.Strict              as HashMap
@@ -59,8 +61,8 @@ import           Clash.Normalize.Util
 import           Clash.Primitives.Types           (PrimMap)
 import           Clash.Rewrite.Combinators        ((>->),(!->))
 import           Clash.Rewrite.Types
-  (CallGraph, RewriteEnv (..), RewriteState (..), bindings, curFun, dbgLevel, extra,
-   tcCache, topEntities, typeTranslator)
+  (CallGraph, RewriteEnv (..), RewriteState (..), bindings, callGraph, curFun, dbgLevel, extra,
+   filterTransitiveDeps, pprCallGraph, tcCache, topEntities, typeTranslator)
 import           Clash.Rewrite.Util               (isUntranslatableType,
                                                    runRewrite,
                                                    runRewriteSession)
@@ -154,12 +156,34 @@ normalize' nm = do
       resTyRep <- not <$> isUntranslatableType False resTy
       if resTyRep
          then do
-            tmNorm <- makeCached nm (extra.normalized) $ do
+            tmNorm <- makeCached' nm (extra.normalized) $ do
                         curFun .= (nm',sp)
+                        -- curFun .= (nm,sp)
+                        shout ("doing normalize' on curFun: " ++ show nm' ++ "\n(which has nm: " ++ show nm ++ ")") return ()
+
                         tm' <- rewriteExpr ("normalization",normalization) (nmS,tm)
                         ty' <- termType tcm tm'
                         return (nm',ty',sp,inl,tm')
             let usedBndrs = Lens.toListOf termFreeIds (tmNorm ^. _5)
+            let tm' = tmNorm ^. _5
+
+            -- callGraph %= cleanupCallGraph
+            cg <- Lens.use callGraph
+            bndrs <- Lens.use bindings
+            let bndrs' = (HashMap.alter (\(Just x) -> Just $ x & _5 .~ tm') nm bndrs)
+                cg' = filterTransitiveDeps cg [nm]
+            -- update global binders
+            bindings .= bndrs'
+
+            let cg2 = createCallGraph bndrs' nm
+            -- when (cg' /= cg2) $ shoutM $ unlines
+            when (cg' /= cg2) $ error $ unlines
+              [ "ERROR: after normalization of " ++ show nm ++ " the callGraph isn't correct: "
+              , "CallGraph from normalization:"
+              , pprCallGraph cg'
+              , "freshly calculated callGraph from result:"
+              , pprCallGraph cg2
+              ]
             traceIf (nm `elem` usedBndrs)
                     (concat [ $(curLoc),"Expr belonging to bndr: ",nmS ," (:: "
                             , showDoc (tmNorm ^. _2)
@@ -205,6 +229,7 @@ rewriteExpr (nrwS,nrw) (bndrS,expr) = do
                 expr
   rewritten <- runRewrite nrwS nrw expr'
   let after = showDoc rewritten
+  -- cg <- Lens.use callGraph
   traceIf (lvl >= DebugFinal)
     (bndrS ++ " after " ++ nrwS ++ ":\n\n" ++ after ++ "\n") $
     return rewritten

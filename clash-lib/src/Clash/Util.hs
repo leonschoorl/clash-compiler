@@ -78,6 +78,21 @@ makeCached key l create = do
       l %= HashMapL.insert key value
       return value
 
+-- | Cache the result of a monadic action
+makeCached' :: (MonadState s m, Hashable k, Eq k, Show k)
+           => k -- ^ The key the action is associated with
+           -> Lens' s (HashMap k v) -- ^ The Lens to the HashMap that is the cache
+           -> m v -- ^ The action to cache
+           -> m v
+makeCached' key l create = do
+  cache <- use l
+  case HashMapL.lookup key cache of
+    Just value -> shout ("reusing cached value for index: " ++ show key) return value
+    Nothing -> do
+      value <- create
+      l %= HashMapL.insert key value
+      return value
+
 -- | Cache the result of a monadic action in a State 3 transformer layers down
 makeCachedT3 :: ( MonadTrans t2, MonadTrans t1, MonadTrans t
                 , Eq k, Hashable k
@@ -241,3 +256,10 @@ clogBase x y | x > 1 && y > 0 =
                 then Just (I# (z1 +# 1#))
                 else Just (I# z1)
 clogBase _ _ = Nothing
+
+shout :: String -> a -> a
+shout msg = trace (unlines [line,msg,line,""])
+  where line = replicate 80 '='
+
+shoutM :: Monad m => String -> m ()
+shoutM str = shout str $ return ()

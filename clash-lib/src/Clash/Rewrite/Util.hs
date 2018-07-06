@@ -13,15 +13,17 @@
 {-# LANGUAGE Rank2Types               #-}
 {-# LANGUAGE TemplateHaskell          #-}
 {-# LANGUAGE ViewPatterns             #-}
+{-# LANGUAGE ScopedTypeVariables,PartialTypeSignatures             #-}
 
 module Clash.Rewrite.Util where
 
 import           Control.DeepSeq
 import           Control.Exception           (throw)
 import           Control.Lens
-  (Lens', (%=), (+=), (^.), _2, _4, _5, _Left)
+  (Lens', (%=), (+=), (^.), (.=), _1, _2, _4, _5, _Left)
 import qualified Control.Lens                as Lens
 import qualified Control.Monad               as Monad
+import           Control.Monad               (when)
 import qualified Control.Monad.State.Strict  as State
 import qualified Control.Monad.Writer        as Writer
 import           Data.Bifunctor              (bimap)
@@ -73,13 +75,155 @@ zoomExtra :: State.State extra a
 zoomExtra m = R (\_ s -> case State.runState m (s ^. extra) of
                            (a,s') -> (a,s {_extra = s'},mempty))
 
--- | Record if a transformation is succesfully applied
-apply :: String -- ^ Name of the transformation
+-- only usable on toplevel transformations
+checkCallGraph :: String -- ^ Name of the transformation
       -> Rewrite extra -- ^ Transformation to be applied
       -> Rewrite extra
-apply name rewrite ctx expr = do
+checkCallGraph name rewrite ctx expr = do
   lvl <- Lens.view dbgLevel
-  let before = showDoc expr
+  fName <- Lens.use curFunOccName
+  cg1 <- Lens.use callGraph
+  -- let Just calls1 = HML.lookup  fName cg1
+  (expr', anyChanged) <- Writer.listen $ rewrite ctx expr
+  cg2 <- Lens.use callGraph
+  let hasChanged = Monoid.getAny anyChanged
+      cgChanged = cg1 /= cg2
+  let freeIds = Lens.toListOf termFreeIds expr'
+      notReallyFree = boundInContext ctx
+      Just calls2 = HML.lookup  fName cg2
+      callsAlmost :: HashMap TmOccName  Word
+      callsAlmost = List.foldl'
+                      (\m k -> HML.insertWith (+) k 1 m)
+                      HML.empty
+                      freeIds
+      callsActual = List.foldl' (flip HML.delete) callsAlmost notReallyFree
+  let error' msg = error $ name ++ ": error: " ++ msg
+  otherBndrs <- HML.delete fName <$> Lens.use bindings
+  -- let countFreeIds tm = List.foldl'
+  --            (\m k -> HML.insertWith (+) k 1 m)
+  --            HML.empty
+  --            (Lens.toListOf termFreeIds tm)
+  let otherSubGraphs = fmap (\tm -> countFreeIds (tm ^. _5))
+               -- otherBndrs
+               (HML.intersection otherBndrs cg2)
+
+  when (lvl > DebugNone) $ do
+    when (not hasChanged && cgChanged) $ error' "Callgraph changed while nothing changed according to the Rewrite"
+    when (not hasChanged && expr /= expr') $ error' "Rewrite says it changed something, output expr is unchanged"
+    when (otherSubGraphs /= (HML.delete fName cg2)) $ error' $ unlines
+      [ "After doing " ++ name ++ ", oncurFun: " ++ show fName
+      , "call sub graphs of other global binders not OK!"
+      , "in callgraph:"
+      , pprCallGraph (HML.delete fName cg2)
+      , "freshly calculated:"
+      , pprCallGraph otherSubGraphs
+      ]
+    when (hasChanged && calls2 /= callsActual) $ error' $ unlines
+      [ "After doing " ++ name++ ": callgraph not OK!"
+      , "curFun: " ++ show fName
+      , "calls in callgraph: " ++ showCalls calls2
+      , "calls in term     : " ++ showCalls callsActual
+      , "original term     : " ++ showDoc expr
+      , "rewritten term    : " ++ showDoc expr'
+      ]
+  return expr'
+  where
+    showCalls :: HashMap TmOccName  Word -> String
+    showCalls = unlines . (++ [""]) . ("" :) . map show . HML.toList
+
+
+-- only usable on a transformations
+checkCallGraph' :: String -- ^ Name of the transformation
+      -> Rewrite extra -- ^ Transformation to be applied
+      -> Rewrite extra
+checkCallGraph' name rewrite ctx expr = do
+  lvl <- Lens.view dbgLevel
+  fName <- Lens.use curFunOccName
+  cg1 <- Lens.use callGraph
+  -- let Just calls1 = HML.lookup  fName cg1
+  (expr', anyChanged) <- Writer.listen $ rewrite ctx expr
+  cg2 <- Lens.use callGraph
+  let hasChanged = Monoid.getAny anyChanged
+      cgChanged = cg1 /= cg2
+  let freeIds = Lens.toListOf termFreeIds expr'
+      notReallyFree = boundInContext ctx
+      Just calls2 = HML.lookup  fName cg2
+      callsAlmost :: HashMap TmOccName  Word
+      callsAlmost = List.foldl'
+                      (\m k -> HML.insertWith (+) k 1 m)
+                      HML.empty
+                      freeIds
+      callsActual = List.foldl' (flip HML.delete) callsAlmost notReallyFree
+  let error' msg = error $ name ++ ": error: " ++ msg
+  otherBndrs <- HML.delete fName <$> Lens.use bindings
+  -- let countFreeIds tm = List.foldl'
+  --            (\m k -> HML.insertWith (+) k 1 m)
+  --            HML.empty
+  --            (Lens.toListOf termFreeIds tm)
+  let otherSubGraphs = fmap (\tm -> countFreeIds (tm ^. _5))
+               -- otherBndrs
+               (HML.intersection otherBndrs cg2)
+  let cg3 = genericCallGraphUpdate cg1 fName ctx expr expr'
+
+  when (lvl > DebugNone) $ do
+    when (not hasChanged && cgChanged) $ error' "Callgraph changed while nothing changed according to the Rewrite"
+    when (not hasChanged && expr /= expr') $ error' "Rewrite says it changed something, output expr is unchanged"
+    when (otherSubGraphs /= (HML.delete fName cg2)) $ error' $ unlines
+      [ "After doing " ++ name ++ ", oncurFun: " ++ show fName
+      , "call sub graphs of other global binders not OK!"
+      , "in callgraph:"
+      , pprCallGraph (HML.delete fName cg2)
+      , "freshly calculated:"
+      , pprCallGraph otherSubGraphs
+      ]
+    when (hasChanged && cg2 /= cg3) $ error' $ unlines
+      [ "After doing " ++ name++ ": callgraph not OK!"
+      , "curFun: " ++ show fName
+      , "calls in callgraph: " ++ showCalls calls2
+      , "calls in term     : " ++ showCalls callsActual
+      , "original term     : " ++ showDoc expr
+      , "original term show: " ++ show expr
+      , "rewritten term    : " ++ showDoc expr'
+      ]
+  return expr'
+  where
+    showCalls :: HashMap TmOccName  Word -> String
+    showCalls = unlines . (++ [""]) . ("" :) . map show . HML.toList
+
+
+
+boundInContext :: [CoreContext] -> [TmOccName]
+boundInContext [] =  []
+boundInContext (c:cs) = case c of
+  LetBinding i is -> map varOccName (i:is) ++ boundInContext cs
+  LetBody is      -> map varOccName is     ++ boundInContext cs
+  LamBody i       -> varOccName i           : boundInContext cs
+  CaseAlt is      -> map varOccName is     ++ boundInContext cs
+  _               ->                         boundInContext cs
+  where
+    varOccName = nameOcc . varName
+
+
+-- apply = applyAndCheck
+apply = oldapply
+--
+-- -- Apply a transformation and check the callgraph rewriting
+-- applyAndCheck :: String -- ^ Name of the transformation
+--       -> Rewrite extra -- ^ Transformation to be applied
+--       -> Rewrite extra
+-- applyAndCheck name rewrite = checkCallGraph name (oldapply name rewrite)
+
+-- | Record if a transformation is succesfully applied
+apply,oldapply :: String -- ^ Name of the transformation
+      -> Rewrite extra -- ^ Transformation to be applied
+      -> Rewrite extra
+oldapply name rewrite ctx expr = do
+  lvl <- Lens.view dbgLevel
+  cg1 <- Lens.use callGraph
+  funNm <- Lens.use (curFun . _1)
+  let before =
+        "\t(curFun: " ++ showDoc funNm ++ ")\n" ++
+        showDoc expr
   (expr', anyChanged) <- traceIf (lvl >= DebugAll) ("Trying: " ++ name ++ " on:\n" ++ before) $ Writer.listen $ rewrite ctx expr
   let hasChanged = Monoid.getAny anyChanged
   Monad.when hasChanged $ transformCounter += 1
@@ -117,11 +261,16 @@ apply name rewrite ctx expr = do
 
   Monad.when (lvl >= DebugApplied && not hasChanged && expr /= expr') $
     error $ $(curLoc) ++ "Expression changed without notice(" ++ name ++  "): before" ++ before ++ "\nafter:\n" ++ after
-
+  cg2 <- Lens.use callGraph
+  let cgChanged = cg1 /= cg2
   traceIf (lvl >= DebugName && hasChanged) name $
     traceIf (lvl >= DebugApplied && hasChanged) ("Changes when applying rewrite to:\n" ++ before ++ "\nResult:\n" ++ after ++ "\n") $
-      traceIf (lvl >= DebugAll && not hasChanged) ("No changes when applying rewrite " ++ name ++ " to:\n" ++ after ++ "\n") $
-        return expr''
+      traceIf (lvl >= DebugApplied && cgChanged) (unlines ["Callgraph changed from:",line, pprCallGraph cg1, line,"Resulting graph:",line,pprCallGraph cg2,line]) $
+        traceIf (lvl >= DebugAll && not hasChanged) ("No changes when applying rewrite " ++ name ++ " to:\n" ++ after ++ "\n") $
+          return expr''
+
+line :: String
+line = replicate 30 '-'
 
 -- | Perform a transformation on a Term
 runRewrite :: String -- ^ Name of the transformation
@@ -486,8 +635,15 @@ addGlobalBind
   -> InlineSpec
   -> Term
   -> RewriteMonad extra ()
-addGlobalBind vId ty sp inl body =
-  (ty,body) `deepseq` bindings %= HMS.insert (nameOcc vId) (vId,ty,sp,inl,body)
+addGlobalBind vId ty sp inl body = do
+  let calls = countFreeIds body
+  let vIdOcc = nameOcc vId
+  calls `seq` addCallsM vIdOcc calls
+  shout (unlines
+    [ "addGlobalBind: adding " ++ showDoc vId
+    , line,showDoc body,line
+    , "which has calls: ", pprCallGraph (HMS.singleton vIdOcc calls)
+    ]) $ (ty,body) `deepseq` bindings %= HMS.insert vIdOcc (vId,ty,sp,inl,body)
 
 -- | Create a new name out of the given name, but with another unique
 cloneVar
@@ -496,7 +652,7 @@ cloneVar
   -> m (Name a)
 cloneVar (Name sort nm loc) = do
   i <- toInteger <$> getUniqueM
-  return (Name sort (Unbound.makeName (Unbound.name2String nm) i) loc)
+  return (Name sort (Unbound.makeName (Unbound.name2String nm ++"'") i) loc)
 
 -- | Test whether a term is a variable reference to a local binder
 isLocalVar :: Term
@@ -626,6 +782,7 @@ specialise' specMapLbl specHistLbl specLimitLbl ctx e (Var _ f, args) specArgIn 
     -- Use previously specialized function
     Just (fname,fty) ->
       traceIf (lvl >= DebugApplied) ("Using previous specialization of " ++ showDoc (nameOcc f) ++ " on " ++ (either showDoc showDoc) specAbs ++ ": " ++ showDoc fname) $
+        -- TODO also update callgraph...
         changed $ mkApps (Var fty fname) (args ++ specVars)
     -- Create new specialized function
     Nothing -> do
@@ -655,7 +812,7 @@ specialise' specMapLbl specHistLbl specLimitLbl ctx e (Var _ f, args) specArgIn 
                                        args
               -- Determine name the resulting specialised function, and the
               -- form of the specialised-on argument
-              (fName,inl',specArg') <- case specArg of
+              ((fName,inl',specArg')) <- case specArg of
                 Left a@(collectArgs -> (Var _ g,gArgs)) -> do
                   polyFun <- isPolyFun tcm a
                   if polyFun
@@ -671,18 +828,66 @@ specialise' specMapLbl specHistLbl specLimitLbl ctx e (Var _ f, args) specArgIn 
                       -- binding @g'@ where both the body of @mealy@ and @g@
                       -- are inlined, meaning the state-transition-function
                       -- and the memory element will be in a single function.
+                      --TODO wat doen we hier
                       gTmM <- fmap (HML.lookup (nameOcc g)) $ Lens.use bindings
+                      -- aTy <- termType tcm a
+                      let Just (_gNm,_gTy,_gLoc,_,_gTm) = gTmM
+                      shout (unlines
+                            ["TODO wat doen we met specialise een polyFun......"
+                            -- , "a:" ++ show a
+                            ,"g: " ++ show (nameOcc g)
+                            -- ,"gArgs: " ++ show gArgs
+                            -- ,"gTy: " ++ showDoc gTy
+                            -- ,"aTy: " ++ showDoc aTy
+                            -- ,"aTy: " ++ showDoc aTy
+                            -- ,"gTm: " ++ showDoc gTm
+                            ]) return ()
                       return (g,maybe inl (^. _4) gTmM, maybe specArg (Left . (`mkApps` gArgs) . (^. _5)) gTmM)
                     else return (f,inl,specArg)
-                _ -> return (f,inl,specArg)
+                Left _ -> return (f,inl,specArg)
+                Right ty -> shout ("spec op type:\n" ++ showDoc ty) return (f,inl,specArg)
               -- Create specialized functions
               let newBody = mkAbstraction (mkApps bodyTm (argVars ++ [specArg'])) (boundArgs ++ specBndrs)
               newf <- mkFunction fName sp inl' newBody
+              shout (unlines ["f:", showDoc f , "fName:", showDoc fName]) return ()
+              let newfNm = (newf ^. _1 . Lens.to nameOcc)
+                  fNm = nameOcc fName
+              -- TODO update callgraph to include newf
+              -- =======================
+              curFunNm <- Lens.use curFunOccName
+              shout (unlines [ "specialise' names:"
+                             , "curFun:" ++ showDoc curFunNm
+                             , "f:" ++ showDoc f
+                             , "fName:" ++ showDoc fName
+                             , "fNm:" ++ showDoc fNm
+                             , "newfNm:" ++ showDoc newfNm
+                             ]) return ()
+
+
+              -- calls <- lookupCallsFrom fNm
+              -- addCallsM newfNm calls
+              addCallToM newfNm
+              removeCallToM $ nameOcc f
+              when (nameOcc f /= fNm) $ removeCallToM fNm -- errored
+              -- TODO removeCalls in args...
+              case specArg' of
+                Left (Var _ argNm) -> do
+                  addCallM newfNm (nameOcc argNm)
+                  removeCallToM $ nameOcc argNm
+                _ -> return ()
+
+              graph <- Lens.use callGraph
+              shout ("newBody: \n" ++ showDoc newBody ++ "\nCallGraph:" ++ pprCallGraph graph) return ()
+              --- ==============================
               -- Remember specialization
               (extra.specHistLbl) %= HML.insertWith (+) (nameOcc f) 1
               (extra.specMapLbl)  %= Map.insert (nameOcc f,argLen,specAbs) newf
               -- use specialized function
               let newExpr = mkApps ((uncurry . flip) Var newf) (args ++ specVars)
+
+              shout ("oldExpr: \n" ++ showDoc e) return ()
+              shout ("newExpr: \n" ++ showDoc newExpr) return ()
+
               newf `deepseq` changed newExpr
         Nothing -> return e
   where
@@ -757,3 +962,31 @@ specArgBndrsAndVars ctx specArg = do
                                    tm' = Name Internal tm noSrcSpan
                                in  (Left $ Id tm' (embed ty), Left $ Var ty tm')) specFVs
   return (specTyBndrs ++ specTmBndrs,specTyVars ++ specTmVars)
+
+countFreeIds :: Term -> HashMap TmOccName Word
+countFreeIds tm = List.foldl'
+             (\m k -> HML.insertWith (+) k 1 m)
+             HML.empty
+             (Lens.toListOf termFreeIds tm)
+
+genericCallGraphUpdate :: CallGraph -> TmOccName -> [CoreContext] -> Term -> Term -> CallGraph
+genericCallGraphUpdate cg nm ctx termIn termOut = cg''
+  where
+    notFree = boundInContext ctx
+    free1  = countFreeIds termIn
+    free1' = foldl (flip HMS.delete) free1 notFree
+    free2 = countFreeIds termOut
+    free2' = foldl (flip HMS.delete) free2 notFree
+    cg'  = removeCalls cg nm free1'
+    cg'' = addCalls cg' nm free2'
+
+genericCallGraphUpdateM :: [CoreContext] -> Term -> Term -> RewriteMonad extra ()
+genericCallGraphUpdateM ctx termIn termOut = do
+  cg <- Lens.use callGraph
+  fName <- Lens.use curFunOccName
+  let cg' = genericCallGraphUpdate cg fName ctx termIn termOut
+  traceIf True (unlines ["genericCallGraphUpdateM on ", show fName
+                  ,"old cg:", pprCallGraph cg
+                  ,"new cg:", pprCallGraph cg'
+                  ]) return ()
+  callGraph .= cg'

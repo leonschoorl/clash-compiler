@@ -19,6 +19,7 @@ import qualified Control.Concurrent.Supply        as Supply
 import           Control.DeepSeq
 import           Control.Exception                (tryJust, bracket)
 import           Control.Lens                     ((^.), _5)
+-- import           Control.Lens                     ((^.), _1, _5, to)
 import           Control.Monad                    (guard, when, unless)
 import           Control.Monad.State              (evalState, get)
 import           Data.Hashable                    (hash)
@@ -154,6 +155,7 @@ generateHDL bindingsMap hdlState primMap tcm tupTcm typeTrans eval topEntities
                     . Supply.freshId
                    <$> Supply.newSupply
   let topEntityNames = map (\(x,_,_,_) -> nameOcc x) topEntities
+  -- let topEntityNames = map (^. _1 . to nameOcc) topEntities
 
   (topTime,manifest',seen') <- if sameTopHash
     then do
@@ -162,7 +164,7 @@ generateHDL bindingsMap hdlState primMap tcm tupTcm typeTrans eval topEntities
       return (topTime,manifest,componentNames manifest ++ seen)
     else do
       -- 1. Normalise topEntity
-      let transformedBindings = normalizeEntity bindingsMap primMap' tcm tupTcm
+      let transformedBindings = topCallgraph `seq` normalizeEntity bindingsMap primMap' tcm tupTcm
                                   typeTrans eval topEntityNames opts supplyN
                                   (nameOcc topEntity) topCallgraph
 

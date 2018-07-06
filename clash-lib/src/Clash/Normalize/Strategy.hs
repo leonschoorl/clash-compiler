@@ -19,16 +19,17 @@ normalization :: NormRewrite
 normalization = rmDeadcode >-> constantPropgation >-> etaTL >-> rmUnusedExpr >-!-> anf >-!-> rmDeadcode >->
                 bindConst >-> letTL >-> evalConst >-!-> cse >-!-> cleanup >-> recLetRec
   where
-    etaTL      = apply "etaTL" etaExpansionTL !-> innerMost (apply "applicationPropagation" appProp)
-    anf        = topdownR (apply "nonRepANF" nonRepANF) >-> apply "ANF" makeANF
-    letTL      = topdownSucR (apply "topLet" topLet)
-    recLetRec  = apply "recToLetRec" recToLetRec
-    rmUnusedExpr = bottomupR (apply "removeUnusedExpr" removeUnusedExpr)
-    rmDeadcode = bottomupR (apply "deadcode" deadCode)
-    bindConst  = topdownR (apply "bindConstantVar" bindConstantVar)
-    evalConst  = topdownR (apply "evalConst" reduceConst)
-    cse        = topdownR (apply "CSE" simpleCSE)
-    cleanup    = topdownSucR (apply "inlineCleanup" inlineCleanup) !->
+    etaTL      = checkCallGraph "etaTL" $ apply "etaTL" etaExpansionTL !-> innerMost (apply "applicationPropagation" appProp)
+    anf        = checkCallGraph "anf" $ topdownR (apply "nonRepANF" nonRepANF) >-> apply "ANF" makeANF
+    letTL      = checkCallGraph "letTL" $ topdownSucR (apply "topLet" topLet)
+    recLetRec  = checkCallGraph "recLetRec" $ apply "recToLetRec" recToLetRec
+    rmUnusedExpr = checkCallGraph "rmUnusedExpr" $ bottomupR (apply "removeUnusedExpr" removeUnusedExpr)
+    rmDeadcode = checkCallGraph "rmDeadcode" $ bottomupR (apply "deadcode" deadCode)
+    bindConst  = checkCallGraph "bindConst" $ topdownR (apply "bindConstantVar" bindConstantVar)
+    evalConst  = checkCallGraph "evalConst" $ topdownR (apply "evalConst" reduceConst)
+    cse        = checkCallGraph "cse" $ topdownR (apply "CSE" simpleCSE)
+    cleanup    = checkCallGraph "cleanup" $
+                 topdownSucR (apply "inlineCleanup" inlineCleanup) !->
                  innerMost (applyMany [("caseCon"        , caseCon)
                                       ,("bindConstantVar", bindConstantVar)
                                       ,("letFlat"        , flattenLet)])
@@ -40,13 +41,13 @@ constantPropgation = propagate >-> repeatR inlineAndPropagate >->
                      caseFlattening >-> dec >-> spec >-> dec >->
                      conSpec
   where
-    propagate          = innerMost (applyMany transPropagate)
-    inlineAndPropagate = (topdownR (applyMany transInlineSafe) >-> inlineNR)
-                         !-> propagate
-    spec               = bottomupR (applyMany specTransformations)
-    caseFlattening     = repeatR (topdownR (apply "caseFlat" caseFlat))
-    dec                = repeatR (topdownR (apply "DEC" disjointExpressionConsolidation))
-    conSpec            = bottomupR (apply "constantSpec" constantSpec)
+    propagate          = checkCallGraph "propagate1" $ innerMost (applyMany $ map (\(n,rw) -> (n,checkCallGraph' n rw)) transPropagate)
+    inlineAndPropagate = checkCallGraph "inline" (topdownR (applyMany transInlineSafe) >-> inlineNR)
+                         !-> checkCallGraph "propagate2" propagate
+    spec               = checkCallGraph "specTransformations" $ bottomupR (applyMany specTransformations)
+    caseFlattening     = checkCallGraph "caseFlattening" $ repeatR (topdownR (apply "caseFlat" caseFlat))
+    dec                = checkCallGraph "dec" $ repeatR (topdownR (apply "DEC" disjointExpressionConsolidation))
+    conSpec            = checkCallGraph "conSpec" $ bottomupR (apply "constantSpec" constantSpec)
 
     transPropagate :: [(String,NormRewrite)]
     transPropagate =

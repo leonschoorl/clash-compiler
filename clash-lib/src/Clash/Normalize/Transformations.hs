@@ -56,7 +56,7 @@ import           Control.Exception           (throw)
 import qualified Control.Lens                as Lens
 import qualified Control.Monad               as Monad
 import           Control.Monad.Writer
-  (WriterT (..), censor, lift, listen, tell)
+  (WriterT (..), censor, lift, listen, tell, when)
 import           Control.Monad.Trans.Except  (runExcept)
 import           Data.Bits                   ((.&.), complement)
 import qualified Data.Either                 as Either
@@ -197,10 +197,17 @@ nonRepSpec ctx e@(App e1 e2)
        if nonRepE2 && not localVar
          then do
            e2' <- inlineInternalSpecialisationArgument e2
+           shout (unlines [ "nonRepSpec: "
+                          , "e1:"
+                          , showDoc e1
+                          , "e2:"
+                          , showDoc e2
+                          , "e2':"
+                          , showDoc e2']) return ()
            specializeNorm ctx (App e1 e2')
          else return e
   where
-    -- | If the argument on which we're specialising ia an internal function,
+    -- | If the argument on which we're specialising is an internal function,
     -- one created by the compiler, then inline that function before we
     -- specialise.
     --
@@ -289,6 +296,9 @@ inlineNonRep _ e@(Case scrut altsTy alts)
         case (nonRepScrut, bodyMaybe) of
           (True,Just (_,_,_,_,scrutBody)) -> do
             Monad.when noException (zoomExtra (addNewInline f cf))
+            calls <- HashMap.lookupDefault HashMap.empty f <$> Lens.use callGraph
+            addCallsToM calls
+            removeCallToM f
             changed $ Case (mkApps scrutBody args) altsTy alts
           _ -> return e
   where
@@ -301,9 +311,9 @@ inlineNonRep _ e = return e
 -- the subject is (an application of) a DataCon; or if there is only a single
 -- alternative that doesn't reference variables bound by the pattern.
 caseCon :: NormRewrite
-caseCon _ (Case scrut ty alts)
+caseCon ctx inp@(Case scrut ty alts)
   | (Data dc, args) <- collectArgs scrut
-  = do
+  = trace ("caseCon on Data...") $ do
     alts' <- mapM unbind alts
     let dcAltM = List.find (equalCon dc . fst) alts'
     case dcAltM of
@@ -316,7 +326,10 @@ caseCon _ (Case scrut ty alts)
                   [] -> e
                   _  -> Letrec $ bind (rec $ map (second embed) binds) e
             substTyMap = zip (map (nameOcc.varName) tvs) (drop (length $ dcUnivTyVars dc) (Either.rights args))
-        in  changed (substTysinTm substTyMap e')
+            result = (substTysinTm substTyMap e')
+        in do
+          genericCallGraphUpdateM ctx inp result
+          changed result
       _ -> case alts' of
              ((DefaultPat,e):_) -> changed e
              _ -> changed (mkApps (Prim "Clash.Transformations.undefined" undefinedTy) [Right ty])
@@ -744,7 +757,11 @@ inlineWorkFree _ e@(collectArgs -> (Var _ (nameOcc -> f),args))
             isRecBndr <- isRecursiveBndr f
             if isRecBndr
                then return e
-               else changed (mkApps body args)
+               else do
+                      calls <- HashMap.lookupDefault HashMap.empty f <$> Lens.use callGraph
+                      addCallsToM calls
+                      removeCallToM f
+                      changed (mkApps body args)
           _ -> return e
   where
     -- an expression is has work when it contains free local variables,
@@ -792,7 +809,12 @@ inlineSmall _ e@(collectArgs -> (Var _ (nameOcc -> f),args)) = do
         Just (_,_,_,inl,body) -> do
           isRecBndr <- isRecursiveBndr f
           if not isRecBndr && inl /= NoInline && termSize body < sizeLimit
-             then changed (mkApps body args)
+             then do
+               calls <- HashMap.lookupDefault HashMap.empty f <$> Lens.use callGraph
+               addCallsToM calls
+               removeCallToM f
+
+               changed (mkApps body args )
              else return e
         _ -> return e
 
@@ -820,11 +842,27 @@ constantSpec _ e = return e
 
 -- | Propagate arguments of application inwards; except for 'Lam' where the
 -- argument becomes let-bound.
+
+-- TODO als we arg dupliceren moeten we de callGraph updaten...
 appProp :: NormRewrite
-appProp _ (App (Lam b) arg) = do
+appProp ctx inp@(App (Lam b) arg) = do
   (v,e) <- unbind b
   if isConstant arg || isVar arg
-    then changed $ substTm (nameOcc (varName v)) arg e
+    then
+      let
+        notFree = boundInContext ctx
+        free1  = countFreeIds inp
+        free1' = foldl (flip HashMap.delete) free1 notFree
+        expr = substTm (nameOcc (varName v)) arg e
+        free2 = countFreeIds expr
+        free2' = foldl (flip HashMap.delete) free2 notFree
+      in do
+        when (free1' /= free2') $ do
+          removeCallsToM free1'
+          addCallsToM free2'
+          graph <- Lens.use callGraph
+          shout ("appProp: updating callGraph to:" ++ pprCallGraph graph) return ()
+        changed expr
     else changed . Letrec $ bind (rec [(v,embed arg)]) e
 
 appProp _ (App (Letrec b) arg) = do

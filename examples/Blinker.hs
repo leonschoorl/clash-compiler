@@ -23,8 +23,13 @@ topEntity
 topEntity clk rst =
     exposeClockReset (mealy blinkerT (1,False,0) . isRising 1) pllOut rstSync
   where
-    (pllOut,pllStable) = altpll @Dom50 (SSymbol @ "altpll50") clk rst
-    rstSync            = resetSynchronizer pllOut (unsafeToAsyncReset pllStable)
+    -- (pllOut,pllStable) = altpll @Dom50 (SSymbol @ "altpll50") clk rst
+    -- rstSync            = resetSynchronizer pllOut (unsafeToAsyncReset pllStable)
+    -- pllOut = clk
+    -- pllStable = pure True
+    -- (pllOut,pllStable) = (clk, pure True)
+    pllOut = clk
+    rstSync = rst
 
 blinkerT (leds,mode,cntr) key1R = ((leds',mode',cntr'),leds)
   where

@@ -17,19 +17,23 @@ fir coeffs x_t = y_t
     y_t = dotp coeffs <$> bundle xs
     xs  = window x_t
 
+fir' :: Vec 4 (Signed 16) -> Signal domain (Signed 16) -> Signal domain (Signed 16)
+fir' = fir
+
+
 topEntity
   :: Clock  System Source
   -> Reset  System Asynchronous
   -> Signal System (Signed 16)
   -> Signal System (Signed 16)
-topEntity = exposeClockReset (fir (2:>3:>(-2):>8:>Nil))
+topEntity = exposeClockReset (fir' (2:>3:>(-2):>8:>Nil))
 {-# NOINLINE topEntity #-}
 
-testBench :: Signal System Bool
-testBench = done
-  where
-    testInput      = stimuliGenerator clk rst (2:>3:>(-2):>8:>Nil)
-    expectedOutput = outputVerifier clk rst (4:>12:>1:>20:>Nil)
-    done           = expectedOutput (topEntity clk rst testInput)
-    clk            = tbSystemClockGen (not <$> done)
-    rst            = systemResetGen
+-- testBench :: Signal System Bool
+-- testBench = done
+--   where
+--     testInput      = stimuliGenerator clk rst (2:>3:>(-2):>8:>Nil)
+--     expectedOutput = outputVerifier clk rst (4:>12:>1:>20:>Nil)
+--     done           = expectedOutput (topEntity clk rst testInput)
+--     clk            = tbSystemClockGen (not <$> done)
+--     rst            = systemResetGen
