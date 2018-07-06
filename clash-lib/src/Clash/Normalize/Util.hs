@@ -24,12 +24,15 @@ import           Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 import           Clash.Core.FreeVars     (termFreeIds)
 import           Clash.Core.Term         (Term (..), TmOccName)
 import           Clash.Core.TyCon        (TyCon, TyConOccName)
+import           Clash.Core.Pretty
 import           Clash.Core.Util
   (collectArgs, isClockOrReset, isPolyFun, termType)
 import           Clash.Driver.Types      (BindingMap)
 import           Clash.Normalize.Types
-import           Clash.Rewrite.Types     (CallGraph, bindings,extra,tcCache)
-import           Clash.Rewrite.Util      (specialise)
+import           Clash.Rewrite.Types     (CallGraph, bindings,extra,pprCallGraph,tcCache)
+import           Clash.Rewrite.Util      (countFreeIds,specialise)
+
+import Clash.Util
 
 -- | Determine if a function is already inlined in the context of the 'NetlistMonad'
 alreadyInlined
@@ -110,17 +113,17 @@ createCallGraph
   -> TmOccName
   -> CallGraph
 createCallGraph bndrs = go HashMap.empty
+-- createCallGraph bndrs tm = let res = go HashMap.empty tm in shout ("calculating callGraph for " ++ show tm ++ ":\n" ++ pprCallGraph res) res
+-- createCallGraph bndrs tm = let res = go HashMap.empty tm in shout ("calculating callGraph for " ++ show tm ++ ":\nFrom binders:\n"++ showBinders ++"Callgraph:" ++ pprCallGraph res) res
   where
     go cg root
       | Nothing     <- HashMap.lookup root cg
       , Just rootTm <- HashMap.lookup root bndrs =
-      let used = List.foldl'
-                   (\m k -> HashMap.insertWith (+) k 1 m)
-                   HashMap.empty
-                   (Lens.toListOf termFreeIds (rootTm ^. _5))
+      let used = countFreeIds (rootTm ^. _5)
           cg'  = HashMap.insert root used cg
       in  List.foldl' go cg' (HashMap.keys used)
     go cg _ = cg
+    showBinders = unlines $ map (\(nm,tm) -> show nm ++ " =\n" ++ showDoc tm) $ HashMap.toList $ fmap (^. _5) bndrs
 
 -- | Give a "performance/size" classification of a function in normal form.
 classifyFunction
