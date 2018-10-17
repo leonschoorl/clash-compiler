@@ -78,9 +78,9 @@ import           GHC.Integer.GMP.Internals   (Integer (..), BigNat (..))
 import           BasicTypes                  (InlineSpec (..))
 
 import           Clash.Core.DataCon          (DataCon (..))
-import           Clash.Core.Evaluator        (whnf')
+import           Clash.Core.Evaluator        (PureHeap, whnf')
 import           Clash.Core.Name
-  (Name (..), NameSort (..), mkUnsafeSystemName)
+  (Name (..), NameSort (..), mkUnsafeInternalName, mkUnsafeSystemName)
 import           Clash.Core.FreeVars
   (idOccursIn, idsDoNotOccurIn, termFreeIds, termFreeTyVars, typeFreeVars, varsDoNotOccurIn)
 import           Clash.Core.Literal          (Literal (..))
@@ -93,12 +93,12 @@ import           Clash.Core.Type             (TypeView (..), applyFunTy,
                                               normalizeType,
                                               splitFunTy, typeKind,
                                               tyView, undefinedTy)
-import           Clash.Core.TyCon            (tyConDataCons)
+import           Clash.Core.TyCon            (TyConMap, tyConDataCons)
 import           Clash.Core.Util
   (collectArgs, isClockOrReset, isCon, isFun, isLet, isPolyFun, isPrim,
    isSignalType, isVar, mkApps, mkLams, mkVec, piResultTy, termSize, termType,
    tyNatSize, patIds, patVars)
-import           Clash.Core.Var              (Id, Var (..))
+import           Clash.Core.Var              (Id, Var (..), mkId)
 import           Clash.Core.VarEnv
   (InScopeSet, VarEnv, VarSet, elemVarSet, emptyVarEnv, emptyVarSet, extendInScopeSet,
    extendInScopeSetList, lookupVarEnv, notElemVarSet, unionVarEnvWith, unionVarSet,
@@ -117,7 +117,8 @@ import           Clash.Primitives.Types
 import           Clash.Rewrite.Combinators
 import           Clash.Rewrite.Types
 import           Clash.Rewrite.Util
-import           Clash.Unique                 (lookupUniqMap)
+import           Clash.Unique
+  (Unique, lookupUniqMap, toListUniqMap)
 import           Clash.Util
 
 inlineOrLiftNonRep :: NormRewrite
@@ -379,42 +380,44 @@ caseCon ctx@(TransformContext is0 _) e@(Case subj ty alts)
     lvl <- Lens.view dbgLevel
     is1 <- unionInScope is0 <$> Lens.use globalInScope
     case whnf' primEval bndrs tcm gh ids1 is1 True subj of
-      (gh',v) -> globalHeap Lens..= gh' >> case v of
-        Literal l -> caseCon ctx (Case (Literal l) ty alts)
-        subj' -> case collectArgs subj' of
-          (Data _,_) -> caseCon ctx (Case subj' ty alts)
+      (gh',ph',v) -> do
+        globalHeap Lens..= gh'
+        bindPureHeap tcm ph' $ case v of
+          Literal l -> caseCon ctx (Case (Literal l) ty alts)
+          subj' -> case collectArgs subj' of
+            (Data _,_) -> caseCon ctx (Case subj' ty alts)
 #if MIN_VERSION_ghc(8,2,2)
-          (Prim nm ty',_:msgOrCallStack:_)
-            | nm == "Control.Exception.Base.absentError" ->
-              let e' = mkApps (Prim nm ty') [Right ty,msgOrCallStack]
-              in  changed e'
+            (Prim nm ty',_:msgOrCallStack:_)
+              | nm == "Control.Exception.Base.absentError" ->
+                let e' = mkApps (Prim nm ty') [Right ty,msgOrCallStack]
+                in  changed e'
 #endif
 
-          (Prim nm ty',repTy:_:msgOrCallStack:_)
-            | nm `elem` ["Control.Exception.Base.patError"
+            (Prim nm ty',repTy:_:msgOrCallStack:_)
+              | nm `elem` ["Control.Exception.Base.patError"
 #if !MIN_VERSION_ghc(8,2,2)
-                        ,"Control.Exception.Base.absentError"
+                          ,"Control.Exception.Base.absentError"
 #endif
-                        ,"GHC.Err.undefined"] ->
-              let e' = mkApps (Prim nm ty') [repTy,Right ty,msgOrCallStack]
-              in  changed e'
-          (Prim nm ty',[_])
-            | nm `elem` ["Clash.Transformations.undefined"] ->
-              let e' = mkApps (Prim nm ty') [Right ty]
-              in changed e'
-          (Prim nm _,[])
-            | nm `elem` ["EmptyCase"] ->
-              changed (Prim nm ty)
-          _ -> do
-            let subjTy = termType tcm subj
-            tran <- Lens.view typeTranslator
-            case coreTypeToHWType tran reprs tcm False subjTy of
-              Right (Void (Just hty))
-                | hty `elem` [BitVector 0, Unsigned 0, Signed 0, Index 1]
-                -> caseCon ctx (Case (Literal (IntegerLiteral 0)) ty alts)
-              _ -> traceIf (lvl > DebugNone && isConstant subj)
-                     ("Irreducible constant as case subject: " ++ showPpr subj ++ "\nCan be reduced to: " ++ showPpr subj')
-                     (caseOneAlt e)
+                          ,"GHC.Err.undefined"] ->
+                let e' = mkApps (Prim nm ty') [repTy,Right ty,msgOrCallStack]
+                in  changed e'
+            (Prim nm ty',[_])
+              | nm `elem` ["Clash.Transformations.undefined"] ->
+                let e' = mkApps (Prim nm ty') [Right ty]
+                in changed e'
+            (Prim nm _,[])
+              | nm `elem` ["EmptyCase"] ->
+                changed (Prim nm ty)
+            _ -> do
+              let subjTy = termType tcm subj
+              tran <- Lens.view typeTranslator
+              case coreTypeToHWType tran reprs tcm False subjTy of
+                Right (Void (Just hty))
+                  | hty `elem` [BitVector 0, Unsigned 0, Signed 0, Index 1]
+                  -> caseCon ctx (Case (Literal (IntegerLiteral 0)) ty alts)
+                _ -> traceIf (lvl > DebugNone && isConstant subj)
+                       ("Irreducible constant as case subject: " ++ showPpr subj ++ "\nCan be reduced to: " ++ showPpr subj')
+                       (caseOneAlt e)
 
 caseCon ctx e@(Case subj ty alts) = do
   reprs <- Lens.view customReprs
@@ -428,6 +431,24 @@ caseCon ctx e@(Case subj ty alts) = do
     _ -> caseOneAlt e
 
 caseCon _ e = return e
+
+
+-- | Binds variables on the PureHeap over the result of the rewrite
+--
+-- To prevent unnecessary rewrites only do this when rewrite changed something.
+bindPureHeap :: TyConMap -> PureHeap -> RewriteMonad extra Term -> RewriteMonad extra Term
+bindPureHeap tcm heap rw = do
+  (e, Monoid.getAny -> hasChanged) <- listen rw
+  if hasChanged && not (null bndrs)
+    then return $ Letrec bndrs e
+    else return e
+  where
+    bndrs = map toLetBinding $ toListUniqMap heap
+    toLetBinding :: (Unique,Term) -> LetBinding
+    toLetBinding (uniq,term) = (nm, term)
+      where
+        ty = termType tcm term
+        nm = mkId ty (mkUnsafeInternalName "x" uniq)
 
 matchLiteralContructor
   :: Term
@@ -1387,9 +1408,9 @@ reduceConst (TransformContext is0 _) e@(App _ _)
     gh <- Lens.use globalHeap
     is1 <- unionInScope is0 <$> Lens.use globalInScope
     case whnf' primEval bndrs tcm gh ids1 is1 False e of
-      (gh',e') -> do
+      (gh',ph',e') -> do
         globalHeap Lens..= gh'
-        case e' of
+        bindPureHeap tcm ph' $ case e' of
           (Literal _) -> changed e'
           (collectArgs -> (Prim nm _, _))
             | isFromInt nm
