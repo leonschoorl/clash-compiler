@@ -1,13 +1,9 @@
 #!/bin/bash
 set -xeo pipefail
 
-# Do NOT run apt get update, as deb packages are being cached in the Docker
-# image. Running update might cause the testsuite to try and download updated
-# versions of the packages. Instead, the docker image should be periodically
-# updated.
-#apt-get update -q
+apt-get update -q
 
-apt-get install -yq cabal-install-head $GHC
+apt-get install -yq $CABAL $GHC
 cabal --version
 ghc --version
 cp .ci/cabal.project.local .
