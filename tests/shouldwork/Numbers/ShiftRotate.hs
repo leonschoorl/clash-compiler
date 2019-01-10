@@ -4,11 +4,12 @@ import Clash.Explicit.Testbench
 import Data.Word
 import Data.Int
 
-pat = 0b10011000
+testpattern = 0b10011000
 
+-- test with shift/rotate amounts: 0..16
 type Shifts = 17
-inputs :: Vec Shifts Int
-inputs = iterateI succ 0
+amounts :: Vec Shifts Int
+amounts = iterateI succ 0
 
 testall v i
   = ( testAs @(Unsigned 8)  v i shiftsAndRots
