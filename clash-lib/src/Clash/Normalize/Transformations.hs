@@ -297,6 +297,7 @@ inlineNonRep (TransformContext localScope _) e@(Case scrut altsTy alts)
           _ -> return e
   where
     exception tcm ((tyView . typeKind tcm) -> TyConApp (nameOcc -> "GHC.Types.Constraint") _) = True
+    exception tcm ((tyView . typeKind tcm) -> TyConApp (nameOcc -> "GHC.Prim.TYPE") _) = True
     exception _ _ = False
 
 inlineNonRep _ e = return e
