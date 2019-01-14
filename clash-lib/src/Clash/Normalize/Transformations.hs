@@ -276,6 +276,11 @@ inlineNonRep (TransformContext localScope _) e@(Case scrut altsTy alts)
                              ," already inlined " ++ show limit ++ " times in:"
                              , show cf
                              , "\nType of the subject is: " ++ showPpr ty
+                             , "\nType of f: " ++ showPpr (termType tcm (Var f))
+                             , "\nType of f (show): " ++ show (termType tcm (Var f))
+                             , "\nKind of f: " ++ showPpr (typeKind tcm $ termType tcm (Var f))
+                             , "\nKind of f(show): " ++ show (tyView $ typeKind tcm $ termType tcm (Var f))
+                             , "\n# of args to f: " ++ show (length args)
                              , "\nFunction " ++ show cf
                              , " will not reach a normal form, and compilation"
                              , " might fail."
@@ -297,6 +302,7 @@ inlineNonRep (TransformContext localScope _) e@(Case scrut altsTy alts)
           _ -> return e
   where
     exception tcm ((tyView . typeKind tcm) -> TyConApp (nameOcc -> "GHC.Types.Constraint") _) = True
+    exception tcm ((tyView . typeKind tcm) -> TyConApp (nameOcc -> "GHC.Prim.TYPE") _) = True
     exception _ _ = False
 
 inlineNonRep _ e = return e
