@@ -84,7 +84,7 @@ generateBindings
         , [DataRepr']
         )
 generateBindings useColor primDirs importDirs hdl modName dflagsM = do
-  (bindings,clsOps,unlocatable,fiEnvs,topEntities,pFP,reprs) <- loadModules useColor hdl modName dflagsM
+  (bindings,clsOps,unlocatable,fiEnvs,topEntities,pFP,reprs) <- loadModules useColor hdl modName dflagsM Nothing
   primMap <- generatePrimMap $ concat [pFP, primDirs, importDirs]
   let ((bindingsMap,clsVMap),tcMap) = State.runState (mkBindings primMap bindings clsOps unlocatable) emptyGHC2CoreState
       (tcMap',tupTcCache)           = mkTupTyCons tcMap

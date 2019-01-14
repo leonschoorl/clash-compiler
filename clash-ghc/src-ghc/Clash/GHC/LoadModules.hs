@@ -118,6 +118,8 @@ loadModules
   -- ^ Module name
   -> Maybe (DynFlags.DynFlags)
   -- ^ Flags to run GHC with
+  -> Maybe (DynFlags.DynFlags -> DynFlags.DynFlags)
+  -- ^ optionally modify Dynflags used
   -> IO ( [CoreSyn.CoreBind]                     -- Binders
         , [(CoreSyn.CoreBndr,Int)]               -- Class operations
         , [CoreSyn.CoreBndr]                     -- Unlocatable Expressions
@@ -128,7 +130,7 @@ loadModules
         , [FilePath]
         , [DataRepr']
         )
-loadModules useColor hdl modName dflagsM = do
+loadModules useColor hdl modName dflagsM dflagsModM = do
   libDir <- MonadUtils.liftIO ghcLibDir
 
   GHC.runGhc (Just libDir) $ do
@@ -170,7 +172,8 @@ loadModules useColor hdl modName dflagsM = do
     let ghcDynamic = case lookup "GHC Dynamic" (DynFlags.compilerInfo dflags) of
                       Just "YES" -> True
                       _          -> False
-    let dflags3 = if ghcDynamic then DynFlags.gopt_set dflags2 DynFlags.Opt_BuildDynamicToo
+    let dflags3 = fromMaybe id dflagsModM
+                  $ if ghcDynamic then DynFlags.gopt_set dflags2 DynFlags.Opt_BuildDynamicToo
                                 else dflags2
 #if MIN_VERSION_ghc(8,6,0)
     hscenv <- GHC.getSession
@@ -190,7 +193,7 @@ loadModules useColor hdl modName dflagsM = do
         -- 'topSortModuleGraph' ensures that modGraph2, and hence tidiedMods
         -- are in topological order, i.e. the root module is last.
         modGraph2 = Digraph.flattenSCCs (GHC.topSortModuleGraph True modGraph' Nothing)
-    tidiedMods <- mapM (\m -> do { pMod  <- parseModule m
+    tidiedMods <- mapM (\m -> do { pMod  <- changeDynFlags dflagsModM <$> parseModule m
                                  ; tcMod <- GHC.typecheckModule (removeStrictnessAnnotations pMod)
                                  -- The purpose of the home package table (HPT) is to track
                                  -- the already compiled modules, so subsequent modules can
@@ -285,6 +288,13 @@ loadModules useColor hdl modName dflagsM = do
           Panic.pgmError $ $(curLoc) ++ "Multiple 'topEntities' found."
 
     return (bindersC ++ makeRecursiveGroups externalBndrs,clsOps,unlocatable,(fst famInstEnvs,modFamInstEnvs'),topEntities',nub $ pFP ++ pFP',reprs++reprs')
+
+changeDynFlags :: Maybe (GHC.DynFlags -> GHC.DynFlags) -> GHC.ParsedModule -> GHC.ParsedModule
+changeDynFlags Nothing  pmod = pmod
+changeDynFlags (Just f) pmod = pmod {GHC.pm_mod_summary = modsum {HscTypes.ms_hspp_opts = f dflags}}
+  where
+    modsum = GHC.pm_mod_summary pmod
+    dflags = HscTypes.ms_hspp_opts modsum
 
 -- | Given a set of bindings, make explicit non-recursive bindings and
 -- recursive binding groups.
