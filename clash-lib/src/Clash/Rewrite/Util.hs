@@ -47,7 +47,7 @@ import           Clash.Core.DataCon          (dcExtTyVars)
 import           Clash.Core.FreeVars
   (idDoesNotOccurIn, idOccursIn, typeFreeVars, termFreeVars')
 import           Clash.Core.Name
-import           Clash.Core.Pretty           (showPpr)
+import           Clash.Core.Pretty           (showPpr,showPpr')
 import           Clash.Core.Subst
   (aeqTerm, aeqType, extendIdSubst, mkSubst, substTm)
 import           Clash.Core.Term
@@ -126,11 +126,11 @@ apply
   -> Rewrite extra
 apply name rewrite ctx expr = do
   lvl <- Lens.view dbgLevel
-  let before = showPpr expr
+  let before = showPpr' expr
   (expr', anyChanged) <- traceIf (lvl >= DebugAll) ("Trying: " ++ name ++ " on:\n" ++ before) $ Writer.listen $ rewrite ctx expr
   let hasChanged = Monoid.getAny anyChanged
   Monad.when hasChanged $ transformCounter += 1
-  let after  = showPpr expr'
+  let after  = showPpr' expr'
   let expr'' = if hasChanged then expr' else expr
 
   Monad.when (lvl > DebugNone && hasChanged) $ do

@@ -42,7 +42,7 @@ import           Clash.Annotations.BitRepresentation.Internal
 import           Clash.Core.Evaluator             (PrimEvaluator)
 import           Clash.Core.FreeVars
   (termFreeIds, idDoesNotOccurIn, idOccursIn)
-import           Clash.Core.Pretty                (showPpr, ppr)
+import           Clash.Core.Pretty                (showPpr, showPpr', ppr)
 import           Clash.Core.Subst                 (deShadowTerm, extendIdSubstList, mkSubst, substTm)
 import           Clash.Core.Term                  (Term (..))
 import           Clash.Core.Type                  (Type, splitCoreFunForallTy)
@@ -211,12 +211,12 @@ rewriteExpr :: (String,NormRewrite) -- ^ Transformation to apply
 rewriteExpr (nrwS,nrw) (bndrS,expr) (nm, sp) = do
   curFun .= (nm, sp)
   lvl <- Lens.view dbgLevel
-  let before = showPpr expr
+  let before = showPpr' expr
   let expr' = traceIf (lvl >= DebugFinal)
                 (bndrS ++ " before " ++ nrwS ++ ":\n\n" ++ before ++ "\n")
                 expr
   rewritten <- runRewrite nrwS emptyInScopeSet nrw expr'
-  let after = showPpr rewritten
+  let after = showPpr' rewritten
   traceIf (lvl >= DebugFinal)
     (bndrS ++ " after " ++ nrwS ++ ":\n\n" ++ after ++ "\n") $
     return rewritten

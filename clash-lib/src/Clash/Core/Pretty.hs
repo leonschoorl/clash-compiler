@@ -19,6 +19,7 @@ module Clash.Core.Pretty
   , ppr
   , showDoc
   , showPpr
+  , showPpr'
   , tracePprId
   , tracePpr
   )
@@ -36,13 +37,16 @@ import Numeric                          (fromRat)
 
 import Clash.Core.DataCon               (DataCon (..))
 import Clash.Core.Literal               (Literal (..))
-import Clash.Core.Name                  (Name (..))
+import Clash.Core.Name                  (Name (..), OccName)
 import Clash.Core.Term                  (Pat (..), Term (..))
 import Clash.Core.TyCon                 (TyCon (..), TyConName, isTupleTyConLike)
 import Clash.Core.Type                  (ConstTy (..), Kind, LitTy (..),
                                          Type (..), TypeView (..), tyView)
 import Clash.Core.Var                   (Id, TyVar, Var (..))
 import Clash.Util
+
+import Clash.Unique
+import Control.Monad.State
 
 -- | PrettyPrec printing Show-like typeclass
 class PrettyPrec p where
@@ -63,6 +67,9 @@ appPrec = 2
 showDoc :: Doc ann -> String
 showDoc = renderString . layoutPretty (LayoutOptions (AvailablePerLine 160 0.6))
 
+showPpr' :: Pretty p => p -> String
+showPpr' = showDoc . pretty
+
 showPpr :: PrettyPrec p => p -> String
 showPpr = showDoc . ppr
 
@@ -77,7 +84,49 @@ prettyParen False = id
 prettyParen True  = parens
 
 instance PrettyPrec (Name a) where
-  pprPrec p n = pprPrec p (nameOcc n `T.append` T.pack (show (nameUniq n)))
+  pprPrec p n = pprPrec p (simplifyOccName (nameOcc n) `T.append` T.pack (show (nameUniq n)))
+
+
+stripPrefixes :: [Text] -> Text -> Text
+stripPrefixes [] nm = nm
+stripPrefixes (m:ms) nm = case T.stripPrefix m nm of
+  Just rest -> rest
+  Nothing   -> stripPrefixes ms nm
+
+simplifyOccName :: OccName -> OccName
+simplifyOccName = stripPrefixes standardModules
+  where
+    standardModules
+      = [ "Clash.Class.BitPack."
+        , "Clash.Sized.Internal.BitVector."
+        , "Clash.Sized.Internal.Index."
+        , "Clash.Sized.Internal.Signed."
+        , "Clash.Sized.Internal.Unsigned."
+        , "Clash.Sized.Vector."
+        , "Data.Foldable."
+        , "GHC.Base."
+        , "GHC.Classes."
+        , "GHC.Int."
+        , "GHC.Integer.Type."
+        , "GHC.Natural."
+        , "GHC.Num."
+        , "GHC.Prim."
+        , "GHC.TypeNats."
+        , "GHC.Types."
+        , "GHC.Word."
+        ]
+
+simplifyPrimName :: OccName -> OccName
+simplifyPrimName = stripPrefixes primPrefixes
+  where
+    primPrefixes
+      = [ "Clash.Sized.Internal."
+        , "Clash.Sized.Vector."
+        , "GHC.Int."
+        , "GHC.Word."
+        ]
+
+
 
 instance PrettyPrec a => PrettyPrec [a] where
   pprPrec prec xs = do
@@ -121,7 +170,7 @@ instance PrettyPrec Term where
     Var x        -> pprPrec prec (varName x)
     Data dc      -> pprPrec prec dc
     Literal l    -> pprPrec prec l
-    Prim nm _    -> return $ pretty nm
+    Prim nm _    -> return $ pretty $ simplifyPrimName nm
     Lam  v e1    -> pprPrecLam prec [v] e1
     TyLam tv e1  -> pprPrecTyLam prec [tv] e1
     App fun arg  -> pprPrecApp prec fun arg
@@ -131,7 +180,99 @@ instance PrettyPrec Term where
     Cast e' ty1 ty2-> pprPrecCast prec e' ty1 ty2
 
 instance Pretty Term where
-  pretty = ppr
+  pretty = ppr . simplifyUniqsTerm
+
+type SimplifyUniqState = (Unique, UniqMap Unique)
+type SimplifyUniqMonad = State SimplifyUniqState
+
+simplifyUniqsTerm :: Term -> Term
+simplifyUniqsTerm e = evalState (simplifyUniqs e) (0,emptyUniqMap)
+
+simplifyUniq :: Unique -> SimplifyUniqMonad Unique
+simplifyUniq u = do
+  (next,umap) <- get -- @SimplifyUniqState
+  case lookupUniqMap u umap of
+    Just u' -> return u'
+    Nothing -> do
+      let next' = succ next
+          umap' = extendUniqMap u next umap
+      put (next',umap') :: SimplifyUniqMonad ()
+      return next
+
+class SimplifyUniqs a where
+  simplifyUniqs :: a -> SimplifyUniqMonad a
+
+instance (SimplifyUniqs a) => SimplifyUniqs [a] where
+  simplifyUniqs = mapM simplifyUniqs
+
+instance (SimplifyUniqs a, SimplifyUniqs b) => SimplifyUniqs (a,b) where
+  simplifyUniqs (a,b) = (,) <$> simplifyUniqs a <*> simplifyUniqs b
+
+instance SimplifyUniqs Term where
+  simplifyUniqs e = case e of
+    Var nm -> Var <$> simplifyUniqs nm
+    Data con -> Data <$> simplifyUniqs con
+    Literal {} -> return e
+    Prim nm ty -> Prim nm <$> simplifyUniqs ty
+    Lam nm e1 -> Lam <$> simplifyUniqs nm <*> simplifyUniqs e1
+    TyLam tv e1 -> TyLam <$> simplifyUniqs tv <*> simplifyUniqs e1
+    App e1 e2 -> App <$> simplifyUniqs e1 <*> simplifyUniqs e2
+    TyApp e1 ty -> TyApp <$> simplifyUniqs e1 <*> simplifyUniqs ty
+    Letrec bndrs e1 -> Letrec <$> simplifyUniqs bndrs <*> simplifyUniqs e1
+    Case subj ty alts -> Case <$> simplifyUniqs subj <*> simplifyUniqs ty <*> simplifyUniqs alts
+    Cast e1 ty1 ty2 -> Cast <$> simplifyUniqs e1 <*> simplifyUniqs ty1 <*> simplifyUniqs ty2
+
+instance SimplifyUniqs Pat where
+  simplifyUniqs p = case p of
+    DataPat dc tvs ids -> DataPat <$> simplifyUniqs dc <*> simplifyUniqs tvs <*> simplifyUniqs ids
+    _ -> return p
+
+instance SimplifyUniqs DataCon where
+  simplifyUniqs (MkData nm u ct ty utvs etvs atys lbls)
+    = MkData <$> simplifyUniqs nm
+             <*> simplifyUniq u
+             <*> pure ct
+             <*> simplifyUniqs ty
+             <*> simplifyUniqs utvs
+             <*> simplifyUniqs etvs
+             <*> simplifyUniqs atys
+             <*> pure lbls
+
+
+
+
+
+instance SimplifyUniqs (Var a) where
+  simplifyUniqs v = case v of
+    TyVar nm u ki -> do
+      nm' <- simplifyUniqs nm
+      u' <- simplifyUniq u
+      ki' <- simplifyUniqs ki
+      return $ TyVar nm' u' ki'
+    Id nm u ty -> do
+      nm' <- simplifyUniqs nm
+      u' <- simplifyUniq u
+      ty' <- simplifyUniqs ty
+      return $ Id nm' u' ty'
+
+instance SimplifyUniqs (Name a) where
+  simplifyUniqs (Name srt nm u loc) = do
+    u' <- simplifyUniq u
+    return $ Name srt nm u' loc
+
+instance SimplifyUniqs Type where
+  simplifyUniqs ty = case ty of
+    VarTy tv -> VarTy <$> simplifyUniqs tv
+    ConstTy cty -> ConstTy <$> simplifyUniqs cty
+    ForAllTy tv ty1 -> ForAllTy <$> simplifyUniqs tv <*> simplifyUniqs ty1
+    AppTy ty1 ty2 ->  AppTy <$> simplifyUniqs ty1 <*> simplifyUniqs ty2
+    LitTy{} -> return ty
+    AnnType attrs ty1 -> AnnType attrs <$> simplifyUniqs ty1
+
+instance SimplifyUniqs ConstTy where
+  simplifyUniqs cty = case cty of
+    TyCon tc -> TyCon <$> simplifyUniqs tc
+    Arrow -> return Arrow
 
 data BindingSite
   = LambdaBind
@@ -316,7 +457,7 @@ pprKind = pprType
 pprTcApp :: Monad m => TypePrec -> (TypePrec -> Type -> m (Doc ann))
   -> TyConName -> [Type] -> m (Doc ann)
 pprTcApp _ _  tc []
-  = return . pretty $ nameOcc tc
+  = return . pretty $ simplifyOccName $ nameOcc tc
 
 pprTcApp p pp tc tys
   | isTupleTyConLike tc
@@ -336,7 +477,7 @@ pprTypeNameApp p pp name tys
   | otherwise
   = do
     tys' <- mapM (pp TyConPrec) tys
-    let name' = pretty $ nameOcc name
+    let name' = pretty $ simplifyOccName $ nameOcc name
     return $ pprPrefixApp p (pprPrefixVar isSym name') tys'
   where
     isSym = isSymName name
@@ -346,7 +487,7 @@ pprInfixApp :: Monad m => TypePrec -> (TypePrec -> Type -> m (Doc ann))
 pprInfixApp p pp name ty1 ty2 = do
   ty1'  <- pp FunPrec ty1
   ty2'  <- pp FunPrec ty2
-  let name' = pretty $ nameOcc name
+  let name' = pretty $ simplifyOccName $ nameOcc name
   return $ maybeParen p FunPrec $ sep [ty1', pprInfixVar True name' <+> ty2']
 
 pprPrefixApp :: TypePrec -> (Doc ann) -> [(Doc ann)] -> (Doc ann)
