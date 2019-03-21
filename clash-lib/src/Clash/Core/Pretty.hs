@@ -61,7 +61,7 @@ appPrec = 2
 
 -- | Print a PrettyPrec thing to a String
 showDoc :: Doc ann -> String
-showDoc = renderString . layoutPretty (LayoutOptions (AvailablePerLine 80 0.6))
+showDoc = renderString . layoutPretty (LayoutOptions (AvailablePerLine 160 0.6))
 
 showPpr :: PrettyPrec p => p -> String
 showPpr = showDoc . ppr
@@ -200,7 +200,7 @@ pprPrecApp prec e1 e2 = do
   e1' <- pprPrec opPrec e1
   e2' <- pprPrec appPrec e2
   return $ prettyParen (prec >= appPrec) $
-    hang 2 (vsep [e1',e2'])
+    hang 2 (vsep $ map group [e1',e2'])
 
 pprPrecTyApp :: Monad m => Rational -> Term -> Type -> m (Doc ann)
 pprPrecTyApp prec e ty = do
