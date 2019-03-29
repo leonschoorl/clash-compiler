@@ -151,6 +151,8 @@ of the clock lines in the /clock-domain/.
 so do __not__ do that!
 * __NB__: You should be judicious using a clock with period of @1@ as you can
 never create a clock that goes any faster!
+Also major VHDL simulation tools don't seem to support fractions of picoseconds,
+for best compatibility make sure you period is divisible by 2.
 -}
 data Signal (domain :: Domain) a
   -- | The constructor, @(':-')@, is __not__ synthesisable.
