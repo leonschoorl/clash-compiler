@@ -65,7 +65,8 @@ assign ~RESULT = ~SYM[0];
      ,KnownNat period)       -- ARG[2]
   => Clock domain Source"
     , "template" :
-"// pragma translate_off
+"// clockGen begin
+// pragma translate_off
 // 1 = 0.1ps
 localparam ~GENSYM[half_period][0] = (~LIT[2]0 / 2);
 always begin
@@ -77,7 +78,8 @@ always begin
     #~SYM[0];
   end
 end
-// pragma translate_on"
+// pragma translate_on
+// clockGen end"
     }
   }
 , { "BlackBox" :
@@ -92,7 +94,8 @@ end
   => Signal domain Bool      -- ARG[3]
   -> Clock domain Source"
     , "template" :
-"// pragma translate_off
+"// tbClockGen begin
+// pragma translate_off
 // 1 = 0.1ps
 localparam ~GENSYM[half_period][0] = (~LIT[2]0 / 2);
 always begin
@@ -107,7 +110,8 @@ always begin
     #~SYM[0];
   end
 end
-// pragma translate_on"
+// pragma translate_on
+// tbClockGen end"
     }
   }
 , { "BlackBox" :
@@ -115,12 +119,14 @@ end
     , "kind" : "Declaration"
     , "type" : "asyncResetGen :: Reset domain Asynchronous"
     , "template" :
-"// pragma translate_off
+"// asyncResetGen begin
+// pragma translate_off
 initial begin
   #1    ~RESULT = 1;
   #30001 ~RESULT = 0;
 end
-// pragma translate_on"
+// pragma translate_on
+// asyncResetGen end"
     }
   }
 , { "BlackBox" :
@@ -128,13 +134,15 @@ end
     , "kind" : "Declaration"
     , "type" : "asyncResetGen :: Reset domain Synchronous"
     , "template" :
-"// pragma translate_off
+"// syncResetGen begin
+// pragma translate_off
 localparam ~GENSYM[reset_period][1] = 29998 + ~LIT[1]0;
 initial begin
   #1 ~RESULT = 1;
   #~SYM[1] ~RESULT = 0;
 end
-// pragma translate_on"
+// pragma translate_on
+// syncResetGen end"
     }
   }
 ]
