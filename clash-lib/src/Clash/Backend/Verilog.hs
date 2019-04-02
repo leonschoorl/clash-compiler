@@ -19,6 +19,7 @@
 module Clash.Backend.Verilog
   ( VerilogState
   , include
+  , uselibs
   , encodingNote
   , exprLit
   , bits
@@ -85,6 +86,7 @@ data VerilogState =
     , _srcSpan   :: SrcSpan
     , _includes  :: [(String,Doc)]
     , _imports   :: [Text.Text]
+    , _libraries :: [Text.Text]
     , _dataFiles      :: [(String,FilePath)]
     -- ^ Files to be copied: (filename, old path)
     , _memoryDataFiles:: [(String,String)]
@@ -108,7 +110,7 @@ primsRoot = return ("clash-lib" System.FilePath.</> "prims")
 #endif
 
 instance Backend VerilogState where
-  initBackend     = VerilogState 0 HashMap.empty noSrcSpan [] [] [] []
+  initBackend     = VerilogState 0 HashMap.empty noSrcSpan [] [] [] [] []
   hdlKind         = const Verilog
   primDirs        = const $ do root <- primsRoot
                                return [ root System.FilePath.</> "common"
@@ -180,7 +182,7 @@ instance Backend VerilogState where
         insts ds
   unextend = return rmSlash
   addIncludes inc = includes %= (inc++)
-  addLibraries _ = return ()
+  addLibraries libs = libraries %= (libs ++)
   addImports inps = imports %= (inps ++)
   addAndSetData f = do
     fs <- use dataFiles
@@ -263,7 +265,8 @@ module_ c = addSeen c *> modVerilog <* Mon (imports .= [])
     modVerilog = do
       body <- modBody
       imps <- Mon $ use imports
-      modHeader <> line <> modPorts <> line <> include (nub imps) <> pure body <> line <> modEnding
+      libs <- Mon $ use libraries
+      modHeader <> line <> modPorts <> line <> include (nub imps) <> uselibs (nub libs) <> pure body <> line <> modEnding
 
     modHeader  = "module" <+> stringS (componentName c)
     modPorts   = indent 4 (tupleInputs inPorts <> line <> tupleOutputs outPorts <> semi)
@@ -296,6 +299,13 @@ include :: Monad m => [Text.Text] -> Mon m Doc
 include [] = emptyDoc
 include xs = line <>
   indent 2 (vcat (mapM (\i -> string "`include" <+> dquotes (string i)) xs))
+  <> line <> line
+
+uselibs :: Monad m => [Text.Text] -> Mon m Doc
+uselibs [] = emptyDoc
+uselibs xs = line <>
+  -- NOTE: We must produce a single uselib directive as later ones overwrite earlier ones.
+  indent 2 (string "`uselib" <+> (hsep (mapM (\l -> ("lib=" <> string l)) xs)))
   <> line <> line
 
 wireOrRegDoc :: WireOrReg -> VerilogM Doc
