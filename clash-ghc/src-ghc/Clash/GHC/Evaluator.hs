@@ -20,7 +20,6 @@
 
 module Clash.GHC.Evaluator where
 
-import           Control.Applicative (liftA2)
 import           Control.Concurrent.Supply  (Supply,freshId)
 import           Control.DeepSeq            (force)
 import           Control.Exception          (ArithException(..), Exception, tryJust, evaluate)
@@ -119,43 +118,43 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 -----------------
 -- GHC.Prim.Char#
 -----------------
-  "GHC.Prim.gtChar#" | Just (i,j) <- charLiterals args
+  "GHC.Prim.gtChar#" | [i,j] <- charLiterals args
     -> reduce (boolToIntLiteral (i > j))
-  "GHC.Prim.geChar#" | Just (i,j) <- charLiterals args
+  "GHC.Prim.geChar#" | [i,j] <- charLiterals args
     -> reduce (boolToIntLiteral (i >= j))
-  "GHC.Prim.eqChar#" | Just (i,j) <- charLiterals args
+  "GHC.Prim.eqChar#" | [i,j] <- charLiterals args
     -> reduce (boolToIntLiteral (i == j))
-  "GHC.Prim.neChar#" | Just (i,j) <- charLiterals args
+  "GHC.Prim.neChar#" | [i,j] <- charLiterals args
     -> reduce (boolToIntLiteral (i /= j))
-  "GHC.Prim.ltChar#" | Just (i,j) <- charLiterals args
+  "GHC.Prim.ltChar#" | [i,j] <- charLiterals args
     -> reduce (boolToIntLiteral (i < j))
-  "GHC.Prim.leChar#" | Just (i,j) <- charLiterals args
+  "GHC.Prim.leChar#" | [i,j] <- charLiterals args
     -> reduce (boolToIntLiteral (i <= j))
-  "GHC.Prim.ord#" | [i] <- charLiterals' args
+  "GHC.Prim.ord#" | [i] <- charLiterals args
     -> reduce (integerToIntLiteral (toInteger $ ord i))
 
 ----------------
 -- GHC.Prim.Int#
 ----------------
-  "GHC.Prim.+#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.+#" | [i,j] <- intLiterals args
     -> reduce (integerToIntLiteral (i+j))
-  "GHC.Prim.-#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.-#" | [i,j] <- intLiterals args
     -> reduce (integerToIntLiteral (i-j))
-  "GHC.Prim.*#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.*#" | [i,j] <- intLiterals args
     -> reduce (integerToIntLiteral (i*j))
 
-  "GHC.Prim.mulIntMayOflo#" | Just (i,j) <- intLiterals  args
+  "GHC.Prim.mulIntMayOflo#" | [i,j] <- intLiterals  args
     -> let !(I# a)  = fromInteger i
            !(I# b)  = fromInteger j
            c :: Int#
            c = mulIntMayOflo# a b
        in  reduce (integerToIntLiteral (toInteger $ I# c))
 
-  "GHC.Prim.quotInt#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.quotInt#" | [i,j] <- intLiterals args
     -> reduce $ catchDivByZero (integerToIntLiteral (i `quot` j))
-  "GHC.Prim.remInt#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.remInt#" | [i,j] <- intLiterals args
     -> reduce $ catchDivByZero (integerToIntLiteral (i `rem` j))
-  "GHC.Prim.quotRemInt#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.quotRemInt#" | [i,j] <- intLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -165,20 +164,20 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                     ,Left $ catchDivByZero (integerToIntLiteral r)])
        in  reduce ret
 
-  "GHC.Prim.andI#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.andI#" | [i,j] <- intLiterals args
     -> reduce (integerToIntLiteral (i .&. j))
-  "GHC.Prim.orI#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.orI#" | [i,j] <- intLiterals args
     -> reduce (integerToIntLiteral (i .|. j))
-  "GHC.Prim.xorI#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.xorI#" | [i,j] <- intLiterals args
     -> reduce (integerToIntLiteral (i `xor` j))
-  "GHC.Prim.notI#" | [i] <- intLiterals' args
+  "GHC.Prim.notI#" | [i] <- intLiterals args
     -> reduce (integerToIntLiteral (complement i))
 
   "GHC.Prim.negateInt#"
-    | [Lit (IntLiteral i)] <- args
+    | [i] <- intLiterals args
     -> reduce (integerToIntLiteral (negate i))
 
-  "GHC.Prim.addIntC#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.addIntC#" | [i,j] <- intLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -189,7 +188,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
            mkApps (Data tupDc) (map Right tyArgs ++
                    [ Left (Literal . IntLiteral . toInteger $ I# d)
                    , Left (Literal . IntLiteral . toInteger $ I# c)])
-  "GHC.Prim.subIntC#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.subIntC#" | [i,j] <- intLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -201,20 +200,20 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                    [ Left (Literal . IntLiteral . toInteger $ I# d)
                    , Left (Literal . IntLiteral . toInteger $ I# c)])
 
-  "GHC.Prim.>#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.>#" | [i,j] <- intLiterals args
     -> reduce (boolToIntLiteral (i > j))
-  "GHC.Prim.>=#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.>=#" | [i,j] <- intLiterals args
     -> reduce (boolToIntLiteral (i >= j))
-  "GHC.Prim.==#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.==#" | [i,j] <- intLiterals args
     -> reduce (boolToIntLiteral (i == j))
-  "GHC.Prim./=#" | Just (i,j) <- intLiterals args
+  "GHC.Prim./=#" | [i,j] <- intLiterals args
     -> reduce (boolToIntLiteral (i /= j))
-  "GHC.Prim.<#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.<#" | [i,j] <- intLiterals args
     -> reduce (boolToIntLiteral (i < j))
-  "GHC.Prim.<=#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.<=#" | [i,j] <- intLiterals args
     -> reduce (boolToIntLiteral (i <= j))
 
-  "GHC.Prim.chr#" | [i] <- intLiterals' args
+  "GHC.Prim.chr#" | [i] <- intLiterals args
     -> reduce (charToCharLiteral (chr $ fromInteger i))
 
   "GHC.Prim.int2Word#"
@@ -245,7 +244,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       , Lit (IntLiteral s)
       ] <- args
     -> reduce (integerToIntLiteral (i `shiftR` fromInteger s))
-  "GHC.Prim.uncheckedIShiftRL#" | Just (i,j) <- intLiterals args
+  "GHC.Prim.uncheckedIShiftRL#" | [i,j] <- intLiterals args
     -> let !(I# a)  = fromInteger i
            !(I# b)  = fromInteger j
            c :: Int#
@@ -255,10 +254,10 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 -----------------
 -- GHC.Prim.Word#
 -----------------
-  "GHC.Prim.plusWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.plusWord#" | [i,j] <- wordLiterals args
     -> reduce (integerToWordLiteral (i+j))
 
-  "GHC.Prim.subWordC#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.subWordC#" | [i,j] <- wordLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -270,7 +269,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                    [ Left (Literal . WordLiteral . toInteger $ W# d)
                    , Left (Literal . IntLiteral . toInteger $ I# c)])
 
-  "GHC.Prim.plusWord2#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.plusWord2#" | [i,j] <- wordLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -282,12 +281,12 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                    [ Left (Literal . WordLiteral . toInteger $ W# h')
                    , Left (Literal . WordLiteral . toInteger $ W# l)])
 
-  "GHC.Prim.minusWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.minusWord#" | [i,j] <- wordLiterals args
     -> reduce (integerToWordLiteral (i-j))
-  "GHC.Prim.timesWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.timesWord#" | [i,j] <- wordLiterals args
     -> reduce (integerToWordLiteral (i*j))
 
-  "GHC.Prim.timesWord2#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.timesWord2#" | [i,j] <- wordLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -299,11 +298,11 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                    [ Left (Literal . WordLiteral . toInteger $ W# h')
                    , Left (Literal . WordLiteral . toInteger $ W# l)])
 
-  "GHC.Prim.quotWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.quotWord#" | [i,j] <- wordLiterals args
     -> reduce $ catchDivByZero (integerToWordLiteral (i `quot` j))
-  "GHC.Prim.remWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.remWord#" | [i,j] <- wordLiterals args
     -> reduce $ catchDivByZero (integerToWordLiteral (i `rem` j))
-  "GHC.Prim.quotRemWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.quotRemWord#" | [i,j] <- wordLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -312,7 +311,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                     [Left $ catchDivByZero (integerToWordLiteral q)
                     ,Left $ catchDivByZero (integerToWordLiteral r)])
        in  reduce ret
-  "GHC.Prim.quotRemWord2#" | [i,j,k'] <- wordLiterals' args
+  "GHC.Prim.quotRemWord2#" | [i,j,k'] <- wordLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -325,13 +324,13 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                    [ Left $ catchDivByZero (Literal . WordLiteral . toInteger $ W# x)
                    , Left $ catchDivByZero (Literal . WordLiteral . toInteger $ W# y)])
 
-  "GHC.Prim.and#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.and#" | [i,j] <- wordLiterals args
     -> reduce (integerToWordLiteral (i .&. j))
-  "GHC.Prim.or#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.or#" | [i,j] <- wordLiterals args
     -> reduce (integerToWordLiteral (i .|. j))
-  "GHC.Prim.xor#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.xor#" | [i,j] <- wordLiterals args
     -> reduce (integerToWordLiteral (i `xor` j))
-  "GHC.Prim.not#" | [i] <- wordLiterals' args
+  "GHC.Prim.not#" | [i] <- wordLiterals args
     -> reduce (integerToWordLiteral (complement i))
 
   "GHC.Prim.uncheckedShiftL#"
@@ -349,85 +348,85 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | [Lit (WordLiteral i)] <- args
     -> reduce . Literal . IntLiteral . toInteger $ (fromInteger :: Integer -> Int) i -- for overflow behaviour
 
-  "GHC.Prim.gtWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.gtWord#" | [i,j] <- wordLiterals args
     -> reduce (boolToIntLiteral (i > j))
-  "GHC.Prim.geWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.geWord#" | [i,j] <- wordLiterals args
     -> reduce (boolToIntLiteral (i >= j))
-  "GHC.Prim.eqWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.eqWord#" | [i,j] <- wordLiterals args
     -> reduce (boolToIntLiteral (i == j))
-  "GHC.Prim.neWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.neWord#" | [i,j] <- wordLiterals args
     -> reduce (boolToIntLiteral (i /= j))
-  "GHC.Prim.ltWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.ltWord#" | [i,j] <- wordLiterals args
     -> reduce (boolToIntLiteral (i < j))
-  "GHC.Prim.leWord#" | Just (i,j) <- wordLiterals args
+  "GHC.Prim.leWord#" | [i,j] <- wordLiterals args
     -> reduce (boolToIntLiteral (i <= j))
 
-  "GHC.Prim.popCnt8#" | [i] <- wordLiterals' args
+  "GHC.Prim.popCnt8#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . popCount . (fromInteger :: Integer -> Word8) $ i
-  "GHC.Prim.popCnt16#" | [i] <- wordLiterals' args
+  "GHC.Prim.popCnt16#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . popCount . (fromInteger :: Integer -> Word16) $ i
-  "GHC.Prim.popCnt32#" | [i] <- wordLiterals' args
+  "GHC.Prim.popCnt32#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . popCount . (fromInteger :: Integer -> Word32) $ i
-  "GHC.Prim.popCnt64#" | [i] <- wordLiterals' args
+  "GHC.Prim.popCnt64#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . popCount . (fromInteger :: Integer -> Word64) $ i
-  "GHC.Prim.popCnt#" | [i] <- wordLiterals' args
+  "GHC.Prim.popCnt#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . popCount . (fromInteger :: Integer -> Word) $ i
 
-  "GHC.Prim.clz8#" | [i] <- wordLiterals' args
+  "GHC.Prim.clz8#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countLeadingZeros . (fromInteger :: Integer -> Word8) $ i
-  "GHC.Prim.clz16#" | [i] <- wordLiterals' args
+  "GHC.Prim.clz16#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countLeadingZeros . (fromInteger :: Integer -> Word16) $ i
-  "GHC.Prim.clz32#" | [i] <- wordLiterals' args
+  "GHC.Prim.clz32#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countLeadingZeros . (fromInteger :: Integer -> Word32) $ i
-  "GHC.Prim.clz64#" | [i] <- wordLiterals' args
+  "GHC.Prim.clz64#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countLeadingZeros . (fromInteger :: Integer -> Word64) $ i
-  "GHC.Prim.clz#" | [i] <- wordLiterals' args
+  "GHC.Prim.clz#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countLeadingZeros . (fromInteger :: Integer -> Word) $ i
 
-  "GHC.Prim.ctz8#" | [i] <- wordLiterals' args
+  "GHC.Prim.ctz8#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countTrailingZeros . (fromInteger :: Integer -> Word) $ i .&. (bit 8 - 1)
-  "GHC.Prim.ctz16#" | [i] <- wordLiterals' args
+  "GHC.Prim.ctz16#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countTrailingZeros . (fromInteger :: Integer -> Word) $ i .&. (bit 16 - 1)
-  "GHC.Prim.ctz32#" | [i] <- wordLiterals' args
+  "GHC.Prim.ctz32#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countTrailingZeros . (fromInteger :: Integer -> Word) $ i .&. (bit 32 - 1)
-  "GHC.Prim.ctz64#" | [i] <- wordLiterals' args
+  "GHC.Prim.ctz64#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countTrailingZeros . (fromInteger :: Integer -> Word64) $ i .&. (bit 64 - 1)
-  "GHC.Prim.ctz#" | [i] <- wordLiterals' args
+  "GHC.Prim.ctz#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . countTrailingZeros . (fromInteger :: Integer -> Word) $ i
 
-  "GHC.Prim.byteSwap16#" | [i] <- wordLiterals' args
+  "GHC.Prim.byteSwap16#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . byteSwap16 . (fromInteger :: Integer -> Word16) $ i
-  "GHC.Prim.byteSwap32#" | [i] <- wordLiterals' args
+  "GHC.Prim.byteSwap32#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . byteSwap32 . (fromInteger :: Integer -> Word32) $ i
-  "GHC.Prim.byteSwap64#" | [i] <- wordLiterals' args
+  "GHC.Prim.byteSwap64#" | [i] <- wordLiterals args
     -> reduce . integerToWordLiteral . toInteger . byteSwap64 . (fromInteger :: Integer -> Word64) $ i
-  "GHC.Prim.byteSwap#" | [i] <- wordLiterals' args -- assume 64bits
+  "GHC.Prim.byteSwap#" | [i] <- wordLiterals args -- assume 64bits
     -> reduce . integerToWordLiteral . toInteger . byteSwap64 . (fromInteger :: Integer -> Word64) $ i
 
 ------------
 -- Narrowing
 ------------
-  "GHC.Prim.narrow8Int#" | [i] <- intLiterals' args
+  "GHC.Prim.narrow8Int#" | [i] <- intLiterals args
     -> let !(I# a)  = fromInteger i
            b = narrow8Int# a
        in  reduce . Literal . IntLiteral . toInteger $ I# b
-  "GHC.Prim.narrow16Int#" | [i] <- intLiterals' args
+  "GHC.Prim.narrow16Int#" | [i] <- intLiterals args
     -> let !(I# a)  = fromInteger i
            b = narrow16Int# a
        in  reduce . Literal . IntLiteral . toInteger $ I# b
-  "GHC.Prim.narrow32Int#" | [i] <- intLiterals' args
+  "GHC.Prim.narrow32Int#" | [i] <- intLiterals args
     -> let !(I# a)  = fromInteger i
            b = narrow32Int# a
        in  reduce . Literal . IntLiteral . toInteger $ I# b
-  "GHC.Prim.narrow8Word#" | [i] <- wordLiterals' args
+  "GHC.Prim.narrow8Word#" | [i] <- wordLiterals args
     -> let !(W# a)  = fromInteger i
            b = narrow8Word# a
        in  reduce . Literal . WordLiteral . toInteger $ W# b
-  "GHC.Prim.narrow16Word#" | [i] <- wordLiterals' args
+  "GHC.Prim.narrow16Word#" | [i] <- wordLiterals args
     -> let !(W# a)  = fromInteger i
            b = narrow16Word# a
        in  reduce . Literal . WordLiteral . toInteger $ W# b
-  "GHC.Prim.narrow32Word#" | [i] <- wordLiterals' args
+  "GHC.Prim.narrow32Word#" | [i] <- wordLiterals args
     -> let !(W# a)  = fromInteger i
            b = narrow32Word# a
        in  reduce . Literal . WordLiteral . toInteger $ W# b
@@ -461,7 +460,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   "GHC.Prim.fabsDouble#" | Just r <- liftDD fabsDouble# args
     -> reduce r
 
-  "GHC.Prim.double2Int#" | [i] <- doubleLiterals' args
+  "GHC.Prim.double2Int#" | [i] <- doubleLiterals args
     -> let !(D# a) = fromRational i
            r = double2Int# a
        in  reduce . Literal . IntLiteral . toInteger $ I# r
@@ -497,7 +496,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   "GHC.Prim.**##" | Just r <- liftDDD (**##) args
     -> reduce r
 -- decodeDouble_2Int# :: Double# -> (#Int#, Word#, Word#, Int##)
-  "GHC.Prim.decodeDouble_2Int#" | [i] <- doubleLiterals' args
+  "GHC.Prim.decodeDouble_2Int#" | [i] <- doubleLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -510,7 +509,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                    , Left (Literal . WordLiteral . toInteger $ W# r)
                    , Left (Literal . IntLiteral  . toInteger $ I# s)])
 -- decodeDouble_Int64# :: Double# -> (#Int#, Int##)
-  "GHC.Prim.decodeDouble_Int64#" | [i] <- doubleLiterals' args
+  "GHC.Prim.decodeDouble_Int64#" | [i] <- doubleLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -551,7 +550,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   "GHC.Prim.fabsFloat#"  | Just r <- liftFF fabsFloat# args
     -> reduce r
 
-  "GHC.Prim.float2Int#" | [i] <- floatLiterals' args
+  "GHC.Prim.float2Int#" | [i] <- floatLiterals args
     -> let !(F# a) = fromRational i
            r = float2Int# a
        in  reduce . Literal . IntLiteral . toInteger $ I# r
@@ -597,7 +596,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                    F# f' -> f'
 #endif
 
-  "GHC.Prim.float2Double#" | [i] <- floatLiterals' args
+  "GHC.Prim.float2Double#" | [i] <- floatLiterals args
     -> let !(F# a) = fromRational i
            r = float2Double# a
        in  reduce . Literal . DoubleLiteral . toRational $ D# r
@@ -605,7 +604,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
   "GHC.Prim.newByteArray#"
     | [iV,PrimVal rwNm rwTy _ _] <- args
-    , [i] <- intLiterals' [iV]
+    , [i] <- intLiterals [iV]
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -625,7 +624,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,offV,lenV,cV
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [ba,off,len,c] <- intLiterals' [baV,offV,lenV,cV]
+    , [ba,off,len,c] <- intLiterals [baV,offV,lenV,cV]
     -> let Heap (gh,p) gbl ph ids is0 = h
            Just (Literal (ByteArrayLiteral (Vector.Vector voff vlen ba1))) =
               IntMap.lookup (fromInteger ba) gh
@@ -645,8 +644,8 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,iV,wV
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [ba,i] <- intLiterals' [baV,iV]
-    , [w] <- wordLiterals' [wV]
+    , [ba,i] <- intLiterals [baV,iV]
+    , [w] <- wordLiterals [wV]
     -> let Heap (gh,p) gbl ph ids is0 = h
            Just (Literal (ByteArrayLiteral (Vector.Vector off len ba1))) =
               IntMap.lookup (fromInteger ba) gh
@@ -664,7 +663,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | [PrimVal _mbaNm _mbaTy _ [baV]
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [ba] <-  intLiterals' [baV]
+    , [ba] <-  intLiterals [baV]
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -680,7 +679,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
   "GHC.Prim.indexWordArray#"
     | [Lit (ByteArrayLiteral (Vector.Vector _ _ (ByteArray.ByteArray ba))),iV] <- args
-    , [i] <- intLiterals' [iV]
+    , [i] <- intLiterals [iV]
     -> let !(I# i') = fromInteger i
            !w       = indexWordArray# ba i'
        in  reduce (Literal (WordLiteral (toInteger (W# w))))
@@ -689,7 +688,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | [PrimVal _mbaNm _mbaTy _ [baV]
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [ba] <- intLiterals' [baV]
+    , [ba] <- intLiterals [baV]
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -705,7 +704,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,iV
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [ba,i] <- intLiterals' [baV,iV]
+    , [ba,i] <- intLiterals [baV,iV]
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -732,7 +731,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,lenV
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [ba,len] <- intLiterals' [baV,lenV]
+    , [ba,len] <- intLiterals [baV,lenV]
     -> let Heap (gh,p) gbl ph ids is0 = h
            Just (Literal (ByteArrayLiteral (Vector.Vector voff vlen ba1))) =
               IntMap.lookup (fromInteger ba) gh
@@ -752,7 +751,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,dst_offV, nV
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [src_off,dst_mba,dst_off,n] <- intLiterals' [src_offV,dst_mbaV,dst_offV,nV]
+    , [src_off,dst_mba,dst_off,n] <- intLiterals [src_offV,dst_mbaV,dst_offV,nV]
     -> let Heap (gh,p) gbl ph ids is0 = h
            Just (Literal (ByteArrayLiteral (Vector.Vector voff vlen dst_ba))) =
               IntMap.lookup (fromInteger dst_mba) gh
@@ -772,7 +771,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,offV
       ,PrimVal rwNm rwTy _ _
       ] <- args
-    , [ba,off] <- intLiterals' [baV,offV]
+    , [ba,off] <- intLiterals [baV,offV]
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -791,7 +790,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in reduce newE
 
 -- decodeFloat_Int# :: Float# -> (#Int#, Int##)
-  "GHC.Prim.decodeFloat_Int#" | [i] <- floatLiterals' args
+  "GHC.Prim.decodeFloat_Int#" | [i] <- floatLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -813,7 +812,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in ((h,k,) . Data) <$> dc
 
 
-  "GHC.Classes.geInt" | Just (i,j) <- intCLiterals args
+  "GHC.Classes.geInt" | [i,j] <- intCLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i >= j))
 
   "GHC.Classes.&&"
@@ -830,12 +829,12 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
          ((nameOcc (dcName lCon) == "GHC.Types.True") ||
           (nameOcc (dcName rCon) == "GHC.Types.True"))
 
-  "GHC.Classes.divInt#" | Just (i,j) <- intLiterals args
+  "GHC.Classes.divInt#" | [i,j] <- intLiterals args
     -> reduce (integerToIntLiteral (i `div` j))
 
   -- modInt# :: Int# -> Int# -> Int#
   "GHC.Classes.modInt#"
-    | [dividend, divisor] <- intLiterals' args
+    | [dividend, divisor] <- intLiterals args
     ->
       if divisor == 0 then
         let iTy = snd (splitFunForallTy ty) in
@@ -848,7 +847,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce (boolToBoolLiteral tcm ty (nameOcc (dcName bCon) == "GHC.Types.False"))
 
   "GHC.Integer.Logarithms.integerLogBase#"
-    | Just (a,b) <- integerLiterals args
+    | [a,b] <- integerLiterals args
     , Just c <- flogBase a b
     -> (reduce . Literal . IntLiteral . toInteger) c
 
@@ -857,7 +856,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce (Literal (IntegerLiteral i))
 
   "GHC.Integer.Type.integerToInt"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (integerToIntLiteral i)
 
   "GHC.Integer.Type.decodeDoubleInteger" -- :: Double# -> (#Integer, Int##)
@@ -874,13 +873,13 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
   "GHC.Integer.Type.encodeDoubleInteger" -- :: Integer -> Int# -> Double#
     | [iV, Lit (IntLiteral j)] <- args
-    , [i] <- integerLiterals' [iV]
+    , [i] <- integerLiterals [iV]
     -> let !(I# k') = fromInteger j
            r = encodeDoubleInteger i k'
     in  reduce . Literal . DoubleLiteral . toRational $ D# r
 
   "GHC.Integer.Type.quotRemInteger" -- :: Integer -> Integer -> (#Integer, Integer#)
-    | [i, j] <- integerLiterals' args
+    | [i, j] <- integerLiterals args
     -> let (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty
            (Just tupTc) = lookupUniqMap tupTcNm tcm
            [tupDc] = tyConDataCons tupTc
@@ -890,32 +889,32 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                 [ Left $ catchDivByZero (integerToIntegerLiteral q)
                 , Left $ catchDivByZero (integerToIntegerLiteral r)])
 
-  "GHC.Integer.Type.plusInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.plusInteger" | [i,j] <- integerLiterals args
     -> reduce (integerToIntegerLiteral (i+j))
 
-  "GHC.Integer.Type.minusInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.minusInteger" | [i,j] <- integerLiterals args
     -> reduce (integerToIntegerLiteral (i-j))
 
-  "GHC.Integer.Type.timesInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.timesInteger" | [i,j] <- integerLiterals args
     -> reduce (integerToIntegerLiteral (i*j))
 
   "GHC.Integer.Type.negateInteger"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (integerToIntegerLiteral (negate i))
 
-  "GHC.Integer.Type.divInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.divInteger" | [i,j] <- integerLiterals args
     -> reduce $ catchDivByZero (integerToIntegerLiteral (i `div` j))
 
-  "GHC.Integer.Type.modInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.modInteger" | [i,j] <- integerLiterals args
     -> reduce $ catchDivByZero (integerToIntegerLiteral (i `mod` j))
 
-  "GHC.Integer.Type.quotInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.quotInteger" | [i,j] <- integerLiterals args
     -> reduce $ catchDivByZero (integerToIntegerLiteral (i `quot` j))
 
-  "GHC.Integer.Type.remInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.remInteger" | [i,j] <- integerLiterals args
     -> reduce $ catchDivByZero (integerToIntegerLiteral (i `rem` j))
 
-  "GHC.Integer.Type.divModInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.divModInteger" | [i,j] <- integerLiterals args
     -> let (_,tyView -> TyConApp ubTupTcNm [liftedKi,_,intTy,_]) = splitFunForallTy ty
            (Just ubTupTc) = lookupUniqMap ubTupTcNm tcm
            [ubTupDc] = tyConDataCons ubTupTc
@@ -927,44 +926,44 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                                  , Left $ catchDivByZero (Literal (IntegerLiteral m))
                                  ]
 
-  "GHC.Integer.Type.gtInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.gtInteger" | [i,j] <- integerLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i > j))
 
-  "GHC.Integer.Type.geInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.geInteger" | [i,j] <- integerLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i >= j))
 
-  "GHC.Integer.Type.eqInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.eqInteger" | [i,j] <- integerLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i == j))
 
-  "GHC.Integer.Type.neqInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.neqInteger" | [i,j] <- integerLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i /= j))
 
-  "GHC.Integer.Type.ltInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.ltInteger" | [i,j] <- integerLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i < j))
 
-  "GHC.Integer.Type.leInteger" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.leInteger" | [i,j] <- integerLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i <= j))
 
-  "GHC.Integer.Type.gtInteger#" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.gtInteger#" | [i,j] <- integerLiterals args
     -> reduce (boolToIntLiteral (i > j))
 
-  "GHC.Integer.Type.geInteger#" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.geInteger#" | [i,j] <- integerLiterals args
     -> reduce (boolToIntLiteral (i >= j))
 
-  "GHC.Integer.Type.eqInteger#" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.eqInteger#" | [i,j] <- integerLiterals args
     -> reduce (boolToIntLiteral (i == j))
 
-  "GHC.Integer.Type.neqInteger#" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.neqInteger#" | [i,j] <- integerLiterals args
     -> reduce (boolToIntLiteral (i /= j))
 
-  "GHC.Integer.Type.ltInteger#" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.ltInteger#" | [i,j] <- integerLiterals args
     -> reduce (boolToIntLiteral (i < j))
 
-  "GHC.Integer.Type.leInteger#" | Just (i,j) <- integerLiterals args
+  "GHC.Integer.Type.leInteger#" | [i,j] <- integerLiterals args
     -> reduce (boolToIntLiteral (i <= j))
 
   "GHC.Integer.Type.compareInteger" -- :: Integer -> Integer -> Ordering
-    | [i, j] <- integerLiterals' args
+    | [i, j] <- integerLiterals args
     -> let -- Get the required result type (viewed as an applied type constructor name)
            (_,tyView -> TyConApp tupTcNm []) = splitFunForallTy ty
            -- Find the type constructor from the name
@@ -981,12 +980,12 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
   "GHC.Integer.Type.shiftRInteger"
     | [iV, Lit (IntLiteral j)] <- args
-    , [i] <- integerLiterals' [iV]
+    , [i] <- integerLiterals [iV]
     -> reduce (integerToIntegerLiteral (i `shiftR` fromInteger j))
 
   "GHC.Integer.Type.shiftLInteger"
     | [iV, Lit (IntLiteral j)] <- args
-    , [i] <- integerLiterals' [iV]
+    , [i] <- integerLiterals [iV]
     -> reduce (integerToIntegerLiteral (i `shiftL` fromInteger j))
 
   "GHC.Integer.Type.wordToInteger"
@@ -994,7 +993,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce (Literal (IntegerLiteral w))
 
   "GHC.Integer.Type.integerToWord"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (integerToWordLiteral i)
 
   "GHC.Integer.Type.testBitInteger" -- :: Integer -> Int# -> Bool
@@ -1006,11 +1005,11 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce (Literal (NaturalLiteral w))
 
   "GHC.Natural.naturalToInteger"
-    | [i] <- naturalLiterals' args
+    | [i] <- naturalLiterals args
     -> reduce (Literal (IntegerLiteral (toInteger i)))
 
   "GHC.Natural.naturalFromInteger"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     ->
      let nTy = snd (splitFunForallTy ty) in
      reduce (checkNaturalRange1 nTy i id)
@@ -1018,26 +1017,26 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   -- GHC.shiftLNatural --- XXX: Fragile worker of GHC.shiflLNatural
   "GHC.Natural.$wshiftLNatural"
     | [nV,iV] <- args
-    , [n] <- naturalLiterals' [nV]
-    , [i] <- fromInteger <$> intLiterals' [iV]
+    , [n] <- naturalLiterals [nV]
+    , [i] <- fromInteger <$> intLiterals [iV]
     ->
      let nTy = snd (splitFunForallTy ty) in
      reduce (checkNaturalRange1 nTy n ((flip shiftL) i))
 
   "GHC.Natural.plusNatural"
-    | Just (i,j) <- naturalLiterals args
+    | [i,j] <- naturalLiterals args
     ->
      let nTy = snd (splitFunForallTy ty) in
      reduce (checkNaturalRange2 nTy i j (+))
 
   "GHC.Natural.timesNatural"
-    | Just (i,j) <- naturalLiterals args
+    | [i,j] <- naturalLiterals args
     ->
      let nTy = snd (splitFunForallTy ty) in
      reduce (checkNaturalRange2 nTy i j (*))
 
   "GHC.Natural.minusNatural"
-    | Just (i,j) <- naturalLiterals args
+    | [i,j] <- naturalLiterals args
     ->
      let nTy = snd (splitFunForallTy ty) in
      reduce (checkNaturalRange nTy [i, j] (\[i', j'] ->
@@ -1054,11 +1053,11 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   -- GHC.Real.^  -- XXX: Very fragile
   --   ^_f, $wf, $wf1 are specialisations of the internal function f in the implementation of (^) in GHC.Real
   "GHC.Real.^_f"  -- :: Integer -> Integer -> Integer
-    | [i,j] <- integerLiterals' args
+    | [i,j] <- integerLiterals args
     -> reduce (integerToIntegerLiteral $ i ^ j)
   "GHC.Real.$wf"  -- :: Integer -> Int# -> Integer
     | [iV, Lit (IntLiteral j)] <- args
-    , [i] <- integerLiterals' [iV]
+    , [i] <- integerLiterals [iV]
     -> reduce (integerToIntegerLiteral $ i ^ j)
   "GHC.Real.$wf1" -- :: Int# -> Int# -> Int#
     | [Lit (IntLiteral i), Lit (IntLiteral j)] <- args
@@ -1067,7 +1066,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   -- XXX: Very fragile. /$s^_f/ is a specialized version of ^_f. That means that
   -- it is type applied to some specific type.
   "Data.Singletons.TypeLits.Internal.$s^_f"
-    | Just (i,j) <- naturalLiterals args
+    | [i,j] <- naturalLiterals args
     -> reduce (Literal (NaturalLiteral (i ^ j)))
 
   "GHC.TypeLits.natVal"
@@ -1162,7 +1161,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,Lit (IntLiteral matDigs)
       ,nV
       ,dV] <- args
-    , [n,d] <- integerLiterals' [nV,dV]
+    , [n,d] <- integerLiterals [nV,dV]
     -> case fromInteger matDigs of
           matDigs'
             | matDigs' == floatDigits (undefined :: Float)
@@ -1176,7 +1175,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       ,Lit (IntLiteral matDigs)
       ,nV
       ,dV] <- args
-    , [n,d] <- integerLiterals' [nV,dV]
+    , [n,d] <- integerLiterals [nV,dV]
     -> case fromInteger matDigs of
           matDigs'
             | matDigs' == floatDigits (undefined :: Float)
@@ -1186,40 +1185,40 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
           _ -> error $ $(curLoc) ++ "GHC.Float.$w$sfromRat'': Not a Float or Double"
 
   "GHC.Integer.Type.$wsignumInteger" -- XXX: Not super-fragile, but still..
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (Literal (IntLiteral (signum i)))
 
 
   "GHC.Integer.Type.signumInteger"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (Literal (IntegerLiteral (signumInteger i)))
 
   "GHC.Integer.Type.absInteger"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (Literal (IntegerLiteral (absInteger i)))
 
   "GHC.Integer.Type.bitInteger"
-    | [i] <- intLiterals' args
+    | [i] <- intLiterals args
     -> reduce (Literal (IntegerLiteral (bit (fromInteger i))))
 
   "GHC.Integer.Type.complementInteger"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (Literal (IntegerLiteral (complementInteger i)))
 
   "GHC.Integer.Type.orInteger"
-    | [i, j] <- integerLiterals' args
+    | [i, j] <- integerLiterals args
     -> reduce (Literal (IntegerLiteral (orInteger i j)))
 
   "GHC.Integer.Type.xorInteger"
-    | [i, j] <- integerLiterals' args
+    | [i, j] <- integerLiterals args
     -> reduce (Literal (IntegerLiteral (xorInteger i j)))
 
   "GHC.Integer.Type.andInteger"
-    | [i, j] <- integerLiterals' args
+    | [i, j] <- integerLiterals args
     -> reduce (Literal (IntegerLiteral (andInteger i j)))
 
   "GHC.Integer.Type.doubleFromInteger"
-    | [i] <- integerLiterals' args
+    | [i] <- integerLiterals args
     -> reduce (Literal (DoubleLiteral (toRational (fromInteger i :: Double))))
 
   "GHC.Base.eqString"
@@ -1243,11 +1242,11 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in  Just (h2,k,mkBitVectorLit' resTyInfo 0 (BitVector.unsafeToInteger $ (pack :: Float -> BitVector 32) $ fromRational i))
 
   "Clash.Class.BitPack.unpackFloat#"
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     -> reduce (Literal (FloatLiteral (toRational $ (unpack :: BitVector 32 -> Float) (toBV i))))
 
   "Clash.Class.BitPack.unpackDouble#"
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     -> reduce (Literal (DoubleLiteral (toRational $ (unpack :: BitVector 64 -> Double) (toBV i))))
 
   -- expIndex#
@@ -1256,7 +1255,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   --   -> SNat n
   --   -> Index (n^m)
   "Clash.Class.Exp.expIndex#"
-    | [b] <- indexLiterals' args
+    | [b] <- indexLiterals args
     , [(_mTy, km), (_, e)] <- extractKnownNats tcm tys
     -> reduce (mkIndexLit ty (LitTy (NumTy (km^e))) (km^e) (b^e))
 
@@ -1266,7 +1265,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   --   -> SNat n
   --   -> Signed (n*m)
   "Clash.Class.Exp.expSigned#"
-    | [b] <- signedLiterals' args
+    | [b] <- signedLiterals args
     , [(_mTy, km), (_, e)] <- extractKnownNats tcm tys
     -> reduce (mkSignedLit ty (LitTy (NumTy (km*e))) (km*e) (b^e))
 
@@ -1276,7 +1275,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   --   -> SNat n
   --   -> Unsigned m
   "Clash.Class.Exp.expUnsigned#"
-    | [b] <- unsignedLiterals' args
+    | [b] <- unsignedLiterals args
     , [(_mTy, km), (_, e)] <- extractKnownNats tcm tys
     -> reduce (mkUnsignedLit ty (LitTy (NumTy (km*e))) (km*e) (b^e))
 
@@ -1331,12 +1330,12 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 -- Constructor
   "Clash.Sized.Internal.BitVector.BV"
     | [Right _] <- map (runExcept . tyNatSize tcm) tys
-    , Just (m,i) <- integerLiterals args
+    , [m,i] <- integerLiterals args
     -> let resTyInfo = extractTySizeInfo tcm ty tys
        in  reduce (mkBitVectorLit' resTyInfo m i)
 
   "Clash.Sized.Internal.BitVector.Bit"
-    | Just (m,i) <- integerLiterals args
+    | [m,i] <- integerLiterals args
     -> reduce (mkBitLit ty m i)
 
 -- Initialisation
@@ -1397,13 +1396,13 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in  reduce (mkBitVectorLit' resTyInfo msk i)
 
   "Clash.Sized.Internal.BitVector.unpack#"
-    | [(msk,i)] <- bitVectorLiterals' args
+    | [(msk,i)] <- bitVectorLiterals args
     -> reduce (mkBitLit ty msk i)
 
 -- Concatenation
   "Clash.Sized.Internal.BitVector.++#" -- :: KnownNat m => BitVector n -> BitVector m -> BitVector (n + m)
     | Just (_,m) <- extractKnownNat tcm tys
-    , [(mski,i),(mskj,j)] <- bitVectorLiterals' args
+    , [(mski,i),(mskj,j)] <- bitVectorLiterals args
     -> let val = i `shiftL` fromInteger m .|. j
            msk = mski `shiftL` fromInteger m .|. mskj
            resTyInfo = extractTySizeInfo tcm ty tys
@@ -1411,7 +1410,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
 -- Reduction
   "Clash.Sized.Internal.BitVector.reduceAnd#" -- :: KnownNat n => BitVector n -> Bit
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     , Just (_, kn) <- extractKnownNat tcm tys
     -> let resTy = getResultTy tcm ty tys
            val = reifyNat kn (op (toBV i))
@@ -1420,7 +1419,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       op :: KnownNat n => BitVector n -> Proxy n -> Integer
       op u _ = toInteger (BitVector.reduceAnd# u)
   "Clash.Sized.Internal.BitVector.reduceOr#" -- :: KnownNat n => BitVector n -> Bit
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     , Just (_, kn) <- extractKnownNat tcm tys
     -> let resTy = getResultTy tcm ty tys
            val = reifyNat kn (op (toBV i))
@@ -1429,7 +1428,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       op :: KnownNat n => BitVector n -> Proxy n -> Integer
       op u _ = toInteger (BitVector.reduceOr# u)
   "Clash.Sized.Internal.BitVector.reduceXor#" -- :: KnownNat n => BitVector n -> Bit
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     , Just (_, kn) <- extractKnownNat tcm tys
     -> let resTy = getResultTy tcm ty tys
            val = reifyNat kn (op (toBV i))
@@ -1470,7 +1469,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | mTy : _ : nTy : _ <- tys
     , Right m <- runExcept (tyNatSize tcm mTy)
     , Right n <- runExcept (tyNatSize tcm nTy)
-    , [i,j] <- bitVectorLiterals' args
+    , [i,j] <- bitVectorLiterals args
     -> let BV msk val = BitVector.setSlice# (toBV i) (unsafeSNat m) (unsafeSNat n) (toBV j)
            resTyInfo = extractTySizeInfo tcm ty tys
        in  reduce (mkBitVectorLit' resTyInfo msk val)
@@ -1479,7 +1478,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | mTy : _ : nTy : _ <- tys
     , Right m <- runExcept (tyNatSize tcm mTy)
     , Right n <- runExcept (tyNatSize tcm nTy)
-    , [i] <- bitVectorLiterals' args
+    , [i] <- bitVectorLiterals args
     -> let BV msk val = BitVector.slice# (toBV i) (unsafeSNat m) (unsafeSNat n)
            resTyInfo = extractTySizeInfo tcm ty tys
        in  reduce (mkBitVectorLit' resTyInfo msk val)
@@ -1487,7 +1486,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | nTy : mTy : _ <- tys
     , Right n <-  runExcept (tyNatSize tcm nTy)
     , Right m <-  runExcept (tyNatSize tcm mTy)
-    , [(mski,i)] <- bitVectorLiterals' args
+    , [(mski,i)] <- bitVectorLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,tyView -> TyConApp tupTcNm tyArgs) = splitFunForallTy ty'
            (Just tupTc) = lookupUniqMap tupTcNm tcm
@@ -1504,7 +1503,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
                 , Left (mkBitVectorLit bvTy nTy n mskN valN)])
 
   "Clash.Sized.Internal.BitVector.msb#" -- :: forall n. KnownNat n => BitVector n -> Bit
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     , Just (_, kn) <- extractKnownNat tcm tys
     -> let resTy = getResultTy tcm ty tys
            (msk,val) = reifyNat kn (op (toBV i))
@@ -1515,7 +1514,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
         where
           res = BitVector.msb# u
   "Clash.Sized.Internal.BitVector.lsb#" -- :: BitVector n -> Bit
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     -> let resTy = getResultTy tcm ty tys
            Bit msk val = BitVector.lsb# (toBV i)
     in reduce (mkBitLit resTy msk val)
@@ -1594,7 +1593,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce val
   "Clash.Sized.Internal.BitVector.negate#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [i] <- bitVectorLiterals' args
+    , [i] <- bitVectorLiterals args
     -> let (msk,val) = reifyNat kn (op (toBV i))
     in reduce (mkBitVectorLit ty nTy kn msk val)
     where
@@ -1603,7 +1602,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
 -- ExtendingNum
   "Clash.Sized.Internal.BitVector.plus#" -- :: (KnownNat n, KnownNat m) => BitVector m -> BitVector n -> BitVector (Max m n + 1)
-    | [(0,i),(0,j)] <- bitVectorLiterals' args
+    | [(0,i),(0,j)] <- bitVectorLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -1611,7 +1610,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in  reduce (mkBitVectorLit resTy resSizeTy resSizeInt 0 (i+j))
 
   "Clash.Sized.Internal.BitVector.minus#"
-    | [(0,i),(0,j)] <- bitVectorLiterals' args
+    | [(0,i),(0,j)] <- bitVectorLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -1620,7 +1619,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       in  reduce (mkBitVectorLit resTy resSizeTy resSizeInt 0 val)
 
   "Clash.Sized.Internal.BitVector.times#"
-    | [(0,i),(0,j)] <- bitVectorLiterals' args
+    | [(0,i),(0,j)] <- bitVectorLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -1638,7 +1637,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce $ catchDivByZero val
   "Clash.Sized.Internal.BitVector.toInteger#"
     | Just (_, kn) <- extractKnownNat tcm tys
-    , [i] <- bitVectorLiterals' args
+    , [i] <- bitVectorLiterals args
     -> let val = reifyNat kn (op (toBV i))
     in reduce (integerToIntegerLiteral val)
     where
@@ -1647,23 +1646,23 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
 -- Bits
   "Clash.Sized.Internal.BitVector.and#"
-    | Just (i,j) <- bitVectorLiterals args
+    | [i,j] <- bitVectorLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> let BV msk val = BitVector.and# (toBV i) (toBV j)
     in reduce (mkBitVectorLit ty nTy kn msk val)
   "Clash.Sized.Internal.BitVector.or#"
-    | Just (i,j) <- bitVectorLiterals args
+    | [i,j] <- bitVectorLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> let BV msk val = BitVector.or# (toBV i) (toBV j)
     in reduce (mkBitVectorLit ty nTy kn msk val)
   "Clash.Sized.Internal.BitVector.xor#"
-    | Just (i,j) <- bitVectorLiterals args
+    | [i,j] <- bitVectorLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> let BV msk val = BitVector.xor# (toBV i) (toBV j)
     in reduce (mkBitVectorLit ty nTy kn msk val)
 
   "Clash.Sized.Internal.BitVector.complement#"
-    | [i] <- bitVectorLiterals' args
+    | [i] <- bitVectorLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> let (msk,val) = reifyNat kn (op (toBV i))
     in reduce (mkBitVectorLit ty nTy kn msk val)
@@ -1704,7 +1703,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   "Clash.Sized.Internal.BitVector.truncateB#" -- forall a b . KnownNat a => BitVector (a + b) -> BitVector a
     | aTy  : _ <- tys
     , Right ka <- runExcept (tyNatSize tcm aTy)
-    , [(mski,i)] <- bitVectorLiterals' args
+    , [(mski,i)] <- bitVectorLiterals args
     -> let bitsKeep = (bit (fromInteger ka)) - 1
            val = i .&. bitsKeep
            msk = mski .&. bitsKeep
@@ -1717,32 +1716,32 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   "Clash.Sized.Internal.Index.pack#"
     | nTy : _ <- tys
     , Right _ <- runExcept (tyNatSize tcm nTy)
-    , [i] <- indexLiterals' args
+    , [i] <- indexLiterals args
     -> let resTyInfo = extractTySizeInfo tcm ty tys
        in  reduce (mkBitVectorLit' resTyInfo 0 i)
   "Clash.Sized.Internal.Index.unpack#"
     | Just (nTy,kn) <- extractKnownNat tcm tys
-    , [(0,i)] <- bitVectorLiterals' args
+    , [(0,i)] <- bitVectorLiterals args
     -> reduce (mkIndexLit ty nTy kn i)
 
 -- Eq
-  "Clash.Sized.Internal.Index.eq#" | Just (i,j) <- indexLiterals args
+  "Clash.Sized.Internal.Index.eq#" | [i,j] <- indexLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i == j))
-  "Clash.Sized.Internal.Index.neq#" | Just (i,j) <- indexLiterals args
+  "Clash.Sized.Internal.Index.neq#" | [i,j] <- indexLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i /= j))
 
 -- Ord
   "Clash.Sized.Internal.Index.lt#"
-    | Just (i,j) <- indexLiterals args
+    | [i,j] <- indexLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i < j))
   "Clash.Sized.Internal.Index.ge#"
-    | Just (i,j) <- indexLiterals args
+    | [i,j] <- indexLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i >= j))
   "Clash.Sized.Internal.Index.gt#"
-    | Just (i,j) <- indexLiterals args
+    | [i,j] <- indexLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i > j))
   "Clash.Sized.Internal.Index.le#"
-    | Just (i,j) <- indexLiterals args
+    | [i,j] <- indexLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i <= j))
 
 -- Bounded
@@ -1753,15 +1752,15 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 -- Num
   "Clash.Sized.Internal.Index.+#"
     | Just (nTy,kn) <- extractKnownNat tcm tys
-    , [i,j] <- indexLiterals' args
+    , [i,j] <- indexLiterals args
     -> reduce (mkIndexLit ty nTy kn (i + j))
   "Clash.Sized.Internal.Index.-#"
     | Just (nTy,kn) <- extractKnownNat tcm tys
-    , [i,j] <- indexLiterals' args
+    , [i,j] <- indexLiterals args
     -> reduce (mkIndexLit ty nTy kn (i - j))
   "Clash.Sized.Internal.Index.*#"
     | Just (nTy,kn) <- extractKnownNat tcm tys
-    , [i,j] <- indexLiterals' args
+    , [i,j] <- indexLiterals args
     -> reduce (mkIndexLit ty nTy kn (i * j))
 
 -- ExtendingNum
@@ -1769,32 +1768,32 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | mTy : nTy : _ <- tys
     , Right _ <- runExcept (tyNatSize tcm mTy)
     , Right _ <- runExcept (tyNatSize tcm nTy)
-    , Just (i,j) <- indexLiterals args
+    , [i,j] <- indexLiterals args
     -> let resTyInfo = extractTySizeInfo tcm ty tys
        in  reduce (mkIndexLit' resTyInfo (i + j))
   "Clash.Sized.Internal.Index.minus#"
     | mTy : nTy : _ <- tys
     , Right _ <- runExcept (tyNatSize tcm mTy)
     , Right _ <- runExcept (tyNatSize tcm nTy)
-    , Just (i,j) <- indexLiterals args
+    , [i,j] <- indexLiterals args
     -> let resTyInfo = extractTySizeInfo tcm ty tys
        in  reduce (mkIndexLit' resTyInfo (i - j))
   "Clash.Sized.Internal.Index.times#"
     | mTy : nTy : _ <- tys
     , Right _ <- runExcept (tyNatSize tcm mTy)
     , Right _ <- runExcept (tyNatSize tcm nTy)
-    , Just (i,j) <- indexLiterals args
+    , [i,j] <- indexLiterals args
     -> let resTyInfo = extractTySizeInfo tcm ty tys
        in  reduce (mkIndexLit' resTyInfo (i * j))
 
 -- Integral
   "Clash.Sized.Internal.Index.quot#"
     | Just (nTy,kn) <- extractKnownNat tcm tys
-    , Just (i,j) <- indexLiterals args
+    , [i,j] <- indexLiterals args
     -> reduce $ catchDivByZero (mkIndexLit ty nTy kn (i `quot` j))
   "Clash.Sized.Internal.Index.rem#"
     | Just (nTy,kn) <- extractKnownNat tcm tys
-    , Just (i,j) <- indexLiterals args
+    , [i,j] <- indexLiterals args
     -> reduce $ catchDivByZero (mkIndexLit ty nTy kn (i `rem` j))
   "Clash.Sized.Internal.Index.toInteger#"
     | [PrimVal nm' _ _ [_, Lit (IntegerLiteral i)]] <- args
@@ -1804,7 +1803,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 -- Resize
   "Clash.Sized.Internal.Index.resize#"
     | Just (mTy,m) <- extractKnownNat tcm tys
-    , [i] <- indexLiterals' args
+    , [i] <- indexLiterals args
     -> reduce (mkIndexLit ty mTy m i)
 
 ---------
@@ -1820,7 +1819,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 -- BitPack
   "Clash.Sized.Internal.Signed.pack#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [i] <- signedLiterals' args
+    , [i] <- signedLiterals args
     -> let val = reifyNat kn (op (fromInteger i))
        in reduce (mkBitVectorLit ty nTy kn 0 val)
     where
@@ -1828,7 +1827,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
         op s _ = toInteger (Signed.pack# s)
   "Clash.Sized.Internal.Signed.unpack#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [(0,i)] <- bitVectorLiterals' args
+    , [(0,i)] <- bitVectorLiterals args
     -> let val = reifyNat kn (op (fromInteger i))
        in reduce (mkSignedLit ty nTy kn val)
     where
@@ -1836,19 +1835,19 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
         op s _ = toInteger (Signed.unpack# s)
 
 -- Eq
-  "Clash.Sized.Internal.Signed.eq#" | Just (i,j) <- signedLiterals args
+  "Clash.Sized.Internal.Signed.eq#" | [i,j] <- signedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i == j))
-  "Clash.Sized.Internal.Signed.neq#" | Just (i,j) <- signedLiterals args
+  "Clash.Sized.Internal.Signed.neq#" | [i,j] <- signedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i /= j))
 
 -- Ord
-  "Clash.Sized.Internal.Signed.lt#" | Just (i,j) <- signedLiterals args
+  "Clash.Sized.Internal.Signed.lt#" | [i,j] <- signedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i <  j))
-  "Clash.Sized.Internal.Signed.ge#" | Just (i,j) <- signedLiterals args
+  "Clash.Sized.Internal.Signed.ge#" | [i,j] <- signedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i >= j))
-  "Clash.Sized.Internal.Signed.gt#" | Just (i,j) <- signedLiterals args
+  "Clash.Sized.Internal.Signed.gt#" | [i,j] <- signedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i >  j))
-  "Clash.Sized.Internal.Signed.le#" | Just (i,j) <- signedLiterals args
+  "Clash.Sized.Internal.Signed.le#" | [i,j] <- signedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i <= j))
 
 -- Bounded
@@ -1876,7 +1875,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce (val)
   "Clash.Sized.Internal.Signed.negate#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [i] <- signedLiterals' args
+    , [i] <- signedLiterals args
     -> let val = reifyNat kn (op (fromInteger i))
     in reduce (mkSignedLit ty nTy kn val)
     where
@@ -1884,7 +1883,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       op s _ = toInteger (Signed.negate# s)
   "Clash.Sized.Internal.Signed.abs#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [i] <- signedLiterals' args
+    , [i] <- signedLiterals args
     -> let val = reifyNat kn (op (fromInteger i))
     in reduce (mkSignedLit ty nTy kn val)
     where
@@ -1893,7 +1892,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
 -- ExtendingNum
   "Clash.Sized.Internal.Signed.plus#"
-    | Just (i,j) <- signedLiterals args
+    | [i,j] <- signedLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -1901,7 +1900,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in  reduce (mkSignedLit resTy resSizeTy resSizeInt (i+j))
 
   "Clash.Sized.Internal.Signed.minus#"
-    | Just (i,j) <- signedLiterals args
+    | [i,j] <- signedLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -1909,7 +1908,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in  reduce (mkSignedLit resTy resSizeTy resSizeInt (i-j))
 
   "Clash.Sized.Internal.Signed.times#"
-    | Just (i,j) <- signedLiterals args
+    | [i,j] <- signedLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -1940,20 +1939,20 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
 -- Bits
   "Clash.Sized.Internal.Signed.and#"
-    | [i,j] <- signedLiterals' args
+    | [i,j] <- signedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> reduce (mkSignedLit ty nTy kn (i .&. j))
   "Clash.Sized.Internal.Signed.or#"
-    | [i,j] <- signedLiterals' args
+    | [i,j] <- signedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> reduce (mkSignedLit ty nTy kn (i .|. j))
   "Clash.Sized.Internal.Signed.xor#"
-    | [i,j] <- signedLiterals' args
+    | [i,j] <- signedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> reduce (mkSignedLit ty nTy kn (i `xor` j))
 
   "Clash.Sized.Internal.Signed.complement#"
-    | [i] <- signedLiterals' args
+    | [i] <- signedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> let val = reifyNat kn (op (fromInteger i))
     in reduce (mkSignedLit ty nTy kn val)
@@ -1995,7 +1994,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     | mTy : nTy : _ <- tys
     , Right mInt <- runExcept (tyNatSize tcm mTy)
     , Right nInt <- runExcept (tyNatSize tcm nTy)
-    , [i] <- signedLiterals' args
+    , [i] <- signedLiterals args
     -> let val | nInt <= mInt = extended
                | otherwise    = truncated
            extended  = i
@@ -2007,7 +2006,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in reduce (mkSignedLit ty mTy mInt val)
   "Clash.Sized.Internal.Signed.truncateB#" -- KnownNat m => Signed (m + n) -> Signed m
     | Just (mTy, km) <- extractKnownNat tcm tys
-    , [i] <- signedLiterals' args
+    , [i] <- signedLiterals args
     -> let bitsKeep = (bit (fromInteger km)) - 1
            val = i .&. bitsKeep
     in reduce (mkSignedLit ty mTy km val)
@@ -2031,11 +2030,11 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 -- BitPack
   "Clash.Sized.Internal.Unsigned.pack#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [i] <- unsignedLiterals' args
+    , [i] <- unsignedLiterals args
     -> reduce (mkBitVectorLit ty nTy kn 0 i)
   "Clash.Sized.Internal.Unsigned.unpack#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [i] <- bitVectorLiterals' args
+    , [i] <- bitVectorLiterals args
     -> let val = reifyNat kn (op (toBV i))
     in reduce (mkUnsignedLit ty nTy kn val)
     where
@@ -2043,19 +2042,19 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       op u _ = toInteger (Unsigned.unpack# u)
 
 -- Eq
-  "Clash.Sized.Internal.Unsigned.eq#" | Just (i,j) <- unsignedLiterals args
+  "Clash.Sized.Internal.Unsigned.eq#" | [i,j] <- unsignedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i == j))
-  "Clash.Sized.Internal.Unsigned.neq#" | Just (i,j) <- unsignedLiterals args
+  "Clash.Sized.Internal.Unsigned.neq#" | [i,j] <- unsignedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i /= j))
 
 -- Ord
-  "Clash.Sized.Internal.Unsigned.lt#" | Just (i,j) <- unsignedLiterals args
+  "Clash.Sized.Internal.Unsigned.lt#" | [i,j] <- unsignedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i <  j))
-  "Clash.Sized.Internal.Unsigned.ge#" | Just (i,j) <- unsignedLiterals args
+  "Clash.Sized.Internal.Unsigned.ge#" | [i,j] <- unsignedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i >= j))
-  "Clash.Sized.Internal.Unsigned.gt#" | Just (i,j) <- unsignedLiterals args
+  "Clash.Sized.Internal.Unsigned.gt#" | [i,j] <- unsignedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i >  j))
-  "Clash.Sized.Internal.Unsigned.le#" | Just (i,j) <- unsignedLiterals args
+  "Clash.Sized.Internal.Unsigned.le#" | [i,j] <- unsignedLiterals args
     -> reduce (boolToBoolLiteral tcm ty (i <= j))
 
 -- Bounded
@@ -2082,7 +2081,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     -> reduce val
   "Clash.Sized.Internal.Unsigned.negate#"
     | Just (nTy, kn) <- extractKnownNat tcm tys
-    , [i] <- unsignedLiterals' args
+    , [i] <- unsignedLiterals args
     -> let val = reifyNat kn (op (fromInteger i))
     in reduce (mkUnsignedLit ty nTy kn val)
     where
@@ -2091,7 +2090,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
 -- ExtendingNum
   "Clash.Sized.Internal.Unsigned.plus#" -- :: Unsigned m -> Unsigned n -> Unsigned (Max m n + 1)
-    | Just (i,j) <- unsignedLiterals args
+    | [i,j] <- unsignedLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -2099,7 +2098,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in  reduce (mkUnsignedLit resTy resSizeTy resSizeInt (i+j))
 
   "Clash.Sized.Internal.Unsigned.minus#"
-    | [i,j] <- unsignedLiterals' args
+    | [i,j] <- unsignedLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -2108,7 +2107,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
       in   reduce (mkUnsignedLit resTy resSizeTy resSizeInt val)
 
   "Clash.Sized.Internal.Unsigned.times#"
-    | Just (i,j) <- unsignedLiterals args
+    | [i,j] <- unsignedLiterals args
     -> let ty' = piResultTys tcm ty tys
            (_,resTy) = splitFunForallTy ty'
            (TyConApp _ [resSizeTy]) = tyView resTy
@@ -2131,20 +2130,20 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 
 -- Bits
   "Clash.Sized.Internal.Unsigned.and#"
-    | Just (i,j) <- unsignedLiterals args
+    | [i,j] <- unsignedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> reduce (mkUnsignedLit ty nTy kn (i .&. j))
   "Clash.Sized.Internal.Unsigned.or#"
-    | Just (i,j) <- unsignedLiterals args
+    | [i,j] <- unsignedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> reduce (mkUnsignedLit ty nTy kn (i .|. j))
   "Clash.Sized.Internal.Unsigned.xor#"
-    | Just (i,j) <- unsignedLiterals args
+    | [i,j] <- unsignedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> reduce (mkUnsignedLit ty nTy kn (i `xor` j))
 
   "Clash.Sized.Internal.Unsigned.complement#"
-    | [i] <- unsignedLiterals' args
+    | [i] <- unsignedLiterals args
     , Just (nTy, kn) <- extractKnownNat tcm tys
     -> let val = reifyNat kn (op (fromInteger i))
     in reduce (mkUnsignedLit ty nTy kn val)
@@ -2185,7 +2184,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
   "Clash.Sized.Internal.Unsigned.resize#" -- forall n m . KnownNat m => Unsigned n -> Unsigned m
     | _ : mTy : _ <- tys
     , Right km <- runExcept (tyNatSize tcm mTy)
-    , [i] <- unsignedLiterals' args
+    , [i] <- unsignedLiterals args
     -> let bitsKeep = (bit (fromInteger km)) - 1
            val = i .&. bitsKeep
     in reduce (mkUnsignedLit ty mTy km val)
@@ -3284,35 +3283,25 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
 evalUndefined :: Type -> Term
 evalUndefined resTy = TyApp (Prim "Clash.GHC.Evaluator.undefined" undefinedTy) resTy
 
-typedLiterals' :: (Value -> Maybe a) -> [Value] -> [a]
-typedLiterals' typedLiteral = mapMaybe typedLiteral
+typedLiterals :: (Value -> Maybe a) -> [Value] -> [a]
+typedLiterals typedLiteral = mapMaybe typedLiteral
 
-doubleLiterals' :: [Value] -> [Rational]
-doubleLiterals' = typedLiterals' doubleLiteral
+doubleLiterals :: [Value] -> [Rational]
+doubleLiterals = typedLiterals doubleLiteral
   where
     doubleLiteral x = case x of
       Lit (DoubleLiteral i) -> Just i
       _ -> Nothing
 
-floatLiterals' :: [Value] -> [Rational]
-floatLiterals' = typedLiterals' floatLiteral
+floatLiterals :: [Value] -> [Rational]
+floatLiterals = typedLiterals floatLiteral
   where
     floatLiteral x = case x of
       Lit (FloatLiteral i) -> Just i
       _ -> Nothing
 
-integerLiterals :: [Value] -> Maybe (Integer, Integer)
-integerLiterals args = case integerLiterals' args of
-  [i,j] -> Just (i,j)
-  _ -> Nothing
-
-naturalLiterals :: [Value] -> Maybe (Integer, Integer)
-naturalLiterals args = case naturalLiterals' args of
-  [i,j] -> Just (i, j)
-  _ -> Nothing
-
-integerLiterals' :: [Value] -> [Integer]
-integerLiterals' = typedLiterals' integerLiteral
+integerLiterals :: [Value] -> [Integer]
+integerLiterals = typedLiterals integerLiteral
  where
   integerLiteral x = case x of
     Lit (IntegerLiteral i)      -> Just i
@@ -3326,8 +3315,8 @@ integerLiterals' = typedLiterals' integerLiteral
       -> Just (Jn# (BN# ba))
     _ -> Nothing
 
-naturalLiterals' :: [Value] -> [Integer]
-naturalLiterals' = typedLiterals' naturalLiteral
+naturalLiterals :: [Value] -> [Integer]
+naturalLiterals = typedLiterals naturalLiteral
  where
   naturalLiteral x = case x of
     Lit (NaturalLiteral i) -> Just i
@@ -3339,13 +3328,8 @@ naturalLiterals' = typedLiterals' naturalLiteral
       -> Just (Jp# (BN# ba))
     _ -> Nothing
 
-intLiterals :: [Value] -> Maybe (Integer,Integer)
-intLiterals args = case args of
-  [Lit (IntLiteral i), Lit (IntLiteral j)] -> Just (i,j)
-  _ -> Nothing
-
-intLiterals' :: [Value] -> [Integer]
-intLiterals' = typedLiterals' intLiteral
+intLiterals :: [Value] -> [Integer]
+intLiterals = typedLiterals intLiteral
   where
     intLiteral x = case x of
       Lit (IntLiteral i) -> Just i
@@ -3355,12 +3339,8 @@ intCLiteral :: Value -> Maybe Integer
 intCLiteral (DC _ [Left (Literal (IntLiteral i))]) = Just i
 intCLiteral _                                      = Nothing
 
-intCLiterals :: [Value] -> Maybe (Integer, Integer)
-intCLiterals (a1:a2:_) = liftA2 (,) (intCLiteral a1) (intCLiteral a2)
-intCLiterals _         = Nothing
-
-intCLiterals' :: [Value] -> [Integer]
-intCLiterals' = catMaybes . map intCLiteral
+intCLiterals :: [Value] -> [Integer]
+intCLiterals = mapMaybe intCLiteral
 
 mkIntCLiteral
   :: HasCallStack
@@ -3375,50 +3355,33 @@ mkIntCLiteral (DC dc [Left (Literal (IntLiteral _))]) i =
 mkIntCLiteral v _i =
   error $ "Report as bug: mkIntCLiteral was called with wrong value: " ++ show v
 
-wordLiterals :: [Value] -> Maybe (Integer,Integer)
-wordLiterals args = case args of
-  [Lit (WordLiteral i), Lit (WordLiteral j)] -> Just (i,j)
-  _ -> Nothing
-wordLiterals' :: [Value] -> [Integer]
-wordLiterals' = typedLiterals' wordLiteral
+wordLiterals :: [Value] -> [Integer]
+wordLiterals = typedLiterals wordLiteral
   where
     wordLiteral x = case x of
       Lit (WordLiteral i) -> Just i
       _ -> Nothing
 
-charLiterals :: [Value] -> Maybe (Char,Char)
-charLiterals args = case args of
-  [Lit (CharLiteral i), Lit (CharLiteral j)] -> Just (i,j)
-  _ -> Nothing
-
-charLiterals' :: [Value] -> [Char]
-charLiterals' = typedLiterals' charLiteral
+charLiterals :: [Value] -> [Char]
+charLiterals = typedLiterals charLiteral
   where
     charLiteral x = case x of
       Lit (CharLiteral c) -> Just c
       _ -> Nothing
 
-sizedLiterals :: Text -> [Value] -> Maybe (Integer,Integer)
-sizedLiterals szCon args
-  = case args of
-      ([ PrimVal nm  _ _ [_, Lit (IntegerLiteral i)]
-       , PrimVal nm' _ _ [_, Lit (IntegerLiteral j)]])
-        | nm  == szCon
-        , nm' == szCon -> Just (i,j)
+
+sizedLiterals :: Text -> [Value] -> [Integer]
+sizedLiterals szCon = typedLiterals sizedLiteral
+  where
+    sizedLiteral :: Value -> Maybe Integer
+    sizedLiteral val = case val of
+      PrimVal nm  _ _ [_, Lit (IntegerLiteral i)] | nm == szCon -> Just i
       _ -> Nothing
-
-sizedLiterals' :: Text -> [Value] -> [Integer]
-sizedLiterals' szCon = typedLiterals' (sizedLiteral szCon)
-
-sizedLiteral :: Text -> Value -> Maybe Integer
-sizedLiteral szCon val = case val of
-  PrimVal nm  _ _ [_, Lit (IntegerLiteral i)] | nm == szCon -> Just i
-  _ -> Nothing
 
 bitLiterals
   :: [Value]
   -> [(Integer,Integer)]
-bitLiterals = map normalizeBit . typedLiterals' go
+bitLiterals = map normalizeBit . typedLiterals go
  where
   normalizeBit (msk,v) = (msk .&. 1, v .&. 1)
   go val = case val of
@@ -3428,30 +3391,14 @@ bitLiterals = map normalizeBit . typedLiterals' go
     _ -> Nothing
 
 indexLiterals, signedLiterals, unsignedLiterals
-  :: [Value] -> Maybe (Integer,Integer)
+  :: [Value] -> [Integer]
 indexLiterals     = sizedLiterals "Clash.Sized.Internal.Index.fromInteger#"
 signedLiterals    = sizedLiterals "Clash.Sized.Internal.Signed.fromInteger#"
 unsignedLiterals  = sizedLiterals "Clash.Sized.Internal.Unsigned.fromInteger#"
 
 bitVectorLiterals
-  :: [Value] -> Maybe ((Integer,Integer),(Integer,Integer))
-bitVectorLiterals args
-  = case args of
-      ([ PrimVal nm  _ _ [_, Lit (IntegerLiteral mi), Lit (IntegerLiteral i)]
-       , PrimVal nm' _ _ [_, Lit (IntegerLiteral mj), Lit (IntegerLiteral j)]])
-        | nm  == "Clash.Sized.Internal.BitVector.fromInteger#"
-        , nm' == "Clash.Sized.Internal.BitVector.fromInteger#" -> Just ((mi,i),(mj,j))
-      _ -> Nothing
-
-indexLiterals', signedLiterals', unsignedLiterals'
-  :: [Value] -> [Integer]
-indexLiterals'     = sizedLiterals' "Clash.Sized.Internal.Index.fromInteger#"
-signedLiterals'    = sizedLiterals' "Clash.Sized.Internal.Signed.fromInteger#"
-unsignedLiterals'  = sizedLiterals' "Clash.Sized.Internal.Unsigned.fromInteger#"
-
-bitVectorLiterals'
   :: [Value] -> [(Integer,Integer)]
-bitVectorLiterals' = mapMaybe go
+bitVectorLiterals = mapMaybe go
  where
   go :: Value -> Maybe (Integer,Integer)
   go val = case val of
@@ -3802,7 +3749,7 @@ liftUnsigned2 :: KnownNat n
               -> [Type]
               -> [Value]
               -> (Proxy n -> Maybe Term)
-liftUnsigned2 = liftSized2 unsignedLiterals' mkUnsignedLit
+liftUnsigned2 = liftSized2 unsignedLiterals mkUnsignedLit
 
 liftSigned2 :: KnownNat n
               => (Signed n -> Signed n -> Signed n)
@@ -3811,7 +3758,7 @@ liftSigned2 :: KnownNat n
               -> [Type]
               -> [Value]
               -> (Proxy n -> Maybe Term)
-liftSigned2 = liftSized2 signedLiterals' mkSignedLit
+liftSigned2 = liftSized2 signedLiterals mkSignedLit
 
 liftBitVector2 :: KnownNat n
               => (BitVector n -> BitVector n -> BitVector n)
@@ -3822,7 +3769,7 @@ liftBitVector2 :: KnownNat n
               -> (Proxy n -> Maybe Term)
 liftBitVector2  f ty tcm tys args _p
   | Just (nTy, kn) <- extractKnownNat tcm tys
-  , [i,j] <- bitVectorLiterals' args
+  , [i,j] <- bitVectorLiterals args
   = let BV mask val = f (toBV i) (toBV j)
     in Just $ mkBitVectorLit ty nTy kn mask val
   | otherwise = Nothing
@@ -3834,7 +3781,7 @@ liftBitVector2Bool :: KnownNat n
               -> [Value]
               -> (Proxy n -> Maybe Term)
 liftBitVector2Bool  f ty tcm args _p
-  | [i,j] <- bitVectorLiterals' args
+  | [i,j] <- bitVectorLiterals args
   = let val = f (toBV i) (toBV j)
     in Just $ boolToBoolLiteral tcm ty val
   | otherwise = Nothing
@@ -3891,15 +3838,15 @@ getResultTy tcm ty tys = resTy
   (_,resTy) = splitFunForallTy ty'
 
 liftDDI :: (Double# -> Double# -> Int#) -> [Value] -> Maybe Term
-liftDDI f args = case doubleLiterals' args of
+liftDDI f args = case doubleLiterals args of
   [i,j] -> Just $ runDDI f i j
   _     -> Nothing
 liftDDD :: (Double# -> Double# -> Double#) -> [Value] -> Maybe Term
-liftDDD f args = case doubleLiterals' args of
+liftDDD f args = case doubleLiterals args of
   [i,j] -> Just $ runDDD f i j
   _     -> Nothing
 liftDD  :: (Double# -> Double#) -> [Value] -> Maybe Term
-liftDD  f args = case doubleLiterals' args of
+liftDD  f args = case doubleLiterals args of
   [i]   -> Just $ runDD f i
   _     -> Nothing
 runDDI :: (Double# -> Double# -> Int#) -> Rational -> Rational -> Term
@@ -3921,15 +3868,15 @@ runDD f i
     in  Literal . DoubleLiteral . toRational $ D# r
 
 liftFFI :: (Float# -> Float# -> Int#) -> [Value] -> Maybe Term
-liftFFI f args = case floatLiterals' args of
+liftFFI f args = case floatLiterals args of
   [i,j] -> Just $ runFFI f i j
   _     -> Nothing
 liftFFF :: (Float# -> Float# -> Float#) -> [Value] -> Maybe Term
-liftFFF f args = case floatLiterals' args of
+liftFFF f args = case floatLiterals args of
   [i,j] -> Just $ runFFF f i j
   _     -> Nothing
 liftFF  :: (Float# -> Float#) -> [Value] -> Maybe Term
-liftFF  f args = case floatLiterals' args of
+liftFF  f args = case floatLiterals args of
   [i]   -> Just $ runFF f i
   _     -> Nothing
 runFFI :: (Float# -> Float# -> Int#) -> Rational -> Rational -> Term
