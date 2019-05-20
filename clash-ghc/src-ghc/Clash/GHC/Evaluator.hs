@@ -1933,8 +1933,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     , Just val <- reifyNat kn (liftSigned2 (Signed.mod#) ty tcm tys args)
     -> reduce $ catchDivByZero val
   "Clash.Sized.Internal.Signed.toInteger#"
-    | [PrimVal nm' _ _ [_, Lit (IntegerLiteral i)]] <- args
-    , nm' == "Clash.Sized.Internal.Signed.fromInteger#"
+    | [i] <- signedLiterals args
     -> reduce (integerToIntegerLiteral i)
 
 -- Bits
@@ -2124,8 +2123,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
     , Just val <- reifyNat kn (liftUnsigned2 (Unsigned.rem#) ty tcm tys args)
     -> reduce $ catchDivByZero val
   "Clash.Sized.Internal.Unsigned.toInteger#"
-    | [PrimVal nm' _ _ [_, Lit (IntegerLiteral i)]] <- args
-    , nm' == "Clash.Sized.Internal.Unsigned.fromInteger#"
+    | [i] <- unsignedLiterals args
     -> reduce (integerToIntegerLiteral i)
 
 -- Bits
@@ -3378,39 +3376,64 @@ sizedLiterals szCon = typedLiterals sizedLiteral
       PrimVal nm  _ _ [_, Lit (IntegerLiteral i)] | nm == szCon -> Just i
       _ -> Nothing
 
-bitLiterals
-  :: [Value]
-  -> [(Integer,Integer)]
-bitLiterals = map normalizeBit . typedLiterals go
- where
-  normalizeBit (msk,v) = (msk .&. 1, v .&. 1)
-  go val = case val of
-    PrimVal nm _ _ [Lit (IntegerLiteral m), Lit (IntegerLiteral i)]
-      | nm == "Clash.Sized.Internal.BitVector.fromInteger##"
-      -> Just (m,i)
-    _ -> Nothing
+unsignedLiteral :: Value -> Maybe Integer
+unsignedLiteral val = case val of
+  PrimVal nm _ _ [Lit (NaturalLiteral kn), Lit (IntegerLiteral i)]
+    | nm == "Clash.Sized.Internal.Unsigned.fromInteger#"
+    -> Just (reifyNat kn (op $ fromInteger i))
+  _ -> Nothing
+  where
+    op :: KnownNat n => Unsigned n -> Proxy n -> Integer
+    op v _ = Unsigned.toInteger# v
+
+signedLiteral :: Value -> Maybe Integer
+signedLiteral val = case val of
+  PrimVal nm _ _ [Lit (NaturalLiteral kn), Lit (IntegerLiteral i)]
+    | nm == "Clash.Sized.Internal.Signed.fromInteger#"
+    -> Just (reifyNat kn (op $ fromInteger i))
+  _ -> Nothing
+  where
+    op :: KnownNat n => Signed n -> Proxy n -> Integer
+    op v _ = Signed.toInteger# v
+
+bitLiteral :: Value -> Maybe (Integer,Integer)
+bitLiteral val = case val of
+  PrimVal nm _ _ [Lit (IntegerLiteral mi), Lit (IntegerLiteral i)]
+    | nm == "Clash.Sized.Internal.BitVector.fromInteger##"
+    -> Just (splitBit $ BitVector.fromInteger## mi i)
+  _ -> Nothing
+
+bitVectorLiteral :: Value -> Maybe (Integer,Integer)
+bitVectorLiteral val = case val of
+  PrimVal nm _ _ [Lit (NaturalLiteral kn),   Lit (IntegerLiteral mi), Lit (IntegerLiteral i)]
+    | nm == "Clash.Sized.Internal.BitVector.fromInteger#"
+    -> Just (reifyNat kn (op $ BitVector.fromInteger# mi i))
+  _ -> Nothing
+  where
+    op :: KnownNat n => BitVector n -> Proxy n -> (Integer,Integer)
+    op bv _ = splitBV bv
+
 
 indexLiterals, signedLiterals, unsignedLiterals
   :: [Value] -> [Integer]
-indexLiterals     = sizedLiterals "Clash.Sized.Internal.Index.fromInteger#"
-signedLiterals    = sizedLiterals "Clash.Sized.Internal.Signed.fromInteger#"
-unsignedLiterals  = sizedLiterals "Clash.Sized.Internal.Unsigned.fromInteger#"
+indexLiterals     = sizedLiterals "Clash.Sized.Internal.Index.fromInteger#" -- TODO?
+signedLiterals   = mapMaybe signedLiteral
+unsignedLiterals = mapMaybe unsignedLiteral
 
-bitVectorLiterals
+bitLiterals, bitVectorLiterals
   :: [Value] -> [(Integer,Integer)]
-bitVectorLiterals = mapMaybe go
- where
-  go :: Value -> Maybe (Integer,Integer)
-  go val = case val of
-    PrimVal nm  _ _ [_, Lit (IntegerLiteral mi), Lit (IntegerLiteral i)]
-      | nm == "Clash.Sized.Internal.BitVector.fromInteger#" -> Just (mi, i)
-    _ -> Nothing
+bitLiterals = mapMaybe bitLiteral
+bitVectorLiterals = mapMaybe bitVectorLiteral
 
 toBV :: (Integer,Integer) -> BitVector n
 toBV = uncurry BV
 
 splitBV :: BitVector n -> (Integer,Integer)
 splitBV (BV msk val) = (msk,val)
+
+splitBit :: Bit -> (Integer,Integer)
+splitBit (Bit msk val) = (msk,val)
+
 
 valArgs
   :: Value
@@ -3423,15 +3446,14 @@ valArgs _                  = Nothing
 -- Tries to match literal arguments to a function like
 --   (Unsigned.shiftL#  :: forall n. KnownNat n => Unsigned n -> Int -> Unsigned n)
 sizedLitIntLit
-  :: Text -> TyConMap -> [Type] -> [Value]
-  -> Maybe (Type,Integer,Integer,Integer)
-sizedLitIntLit szCon tcm tys args
+  :: (Value -> Maybe integer) -> TyConMap -> [Type] -> [Value]
+  -> Maybe (Type,Integer,integer,Integer)
+sizedLitIntLit matchLit tcm tys args
   | Just (nTy,kn) <- extractKnownNat tcm tys
   , [_
-    ,PrimVal nm _ _ [_,Lit (IntegerLiteral i)]
+    ,matchLit -> Just i
     ,valArgs -> Just [Literal (IntLiteral j)]
     ] <- args
-  , nm == szCon
   = Just (nTy,kn,i,j)
   | otherwise
   = Nothing
@@ -3439,22 +3461,13 @@ sizedLitIntLit szCon tcm tys args
 signedLitIntLit, unsignedLitIntLit
   :: TyConMap -> [Type] -> [Value]
   -> Maybe (Type,Integer,Integer,Integer)
-signedLitIntLit    = sizedLitIntLit "Clash.Sized.Internal.Signed.fromInteger#"
-unsignedLitIntLit  = sizedLitIntLit "Clash.Sized.Internal.Unsigned.fromInteger#"
+signedLitIntLit    = sizedLitIntLit signedLiteral
+unsignedLitIntLit  = sizedLitIntLit unsignedLiteral
 
 bitVectorLitIntLit
   :: TyConMap -> [Type] -> [Value]
   -> Maybe (Type,Integer,(Integer,Integer),Integer)
-bitVectorLitIntLit tcm tys args
-  | Just (nTy,kn) <- extractKnownNat tcm tys
-  , [_
-    ,PrimVal nm _ _ [_,Lit (IntegerLiteral m),Lit (IntegerLiteral i)]
-    ,valArgs -> Just [Literal (IntLiteral j)]
-    ] <- args
-  , nm == "Clash.Sized.Internal.BitVector.fromInteger#"
-  = Just (nTy,kn,(m,i),j)
-  | otherwise
-  = Nothing
+bitVectorLitIntLit = sizedLitIntLit bitVectorLiteral
 
 -- From an argument list to function of type
 --   forall n. KnownNat n => ...
