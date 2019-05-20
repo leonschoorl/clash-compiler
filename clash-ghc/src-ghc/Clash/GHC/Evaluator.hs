@@ -1446,8 +1446,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
          in reduce (mkBitLit resTy msk val)
       where
         op :: KnownNat n => BitVector n -> Int -> Proxy n -> (Integer,Integer)
-        op u i _ = (m, v)
-          where Bit m v = (BitVector.index# u i)
+        op u i _ = splitBit (BitVector.index# u i)
   "Clash.Sized.Internal.BitVector.replaceBit#" -- :: :: KnownNat n => BitVector n -> Int -> Bit -> BitVector n
     | Just (_, n) <- extractKnownNat tcm tys
     , [ _
@@ -1510,9 +1509,7 @@ reduceConstant isSubj tcm h k nm ty tys args = case nm of
        in reduce (mkBitLit resTy msk val)
     where
       op :: KnownNat n => BitVector n -> Proxy n -> (Integer,Integer)
-      op u _ = (unsafeMask# res, BitVector.unsafeToInteger# res)
-        where
-          res = BitVector.msb# u
+      op u _ = splitBit (BitVector.msb# u)
   "Clash.Sized.Internal.BitVector.lsb#" -- :: BitVector n -> Bit
     | [i] <- bitVectorLiterals args
     -> let resTy = getResultTy tcm ty tys
