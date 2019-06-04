@@ -336,7 +336,7 @@ toInt
   -> Int
 ```
 
-Many constraints need to be split accross multiple lines too:
+Many constraints need to be split across multiple lines too:
 
 ```haskell
 toInt
@@ -528,8 +528,8 @@ The most common case when you need strict function arguments is in  recursion wi
 mysum :: [Int] -> Int
 mysum = go 0
   where
-    go !acc []    = acc
-    go acc (x:xs) = go (acc + x) xs
+    go !acc []     = acc
+    go !acc (x:xs) = go (acc + x) xs
 ```
 
 Misc
