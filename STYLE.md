@@ -112,12 +112,9 @@ Format records as follows:
 
 ```haskell
 data Person = Person
-  { firstName :: !String
-  -- ^ First name
-  , lastName :: !String
-  -- ^ Last name
-  , age :: !Int
-  -- ^ Age
+  { firstName :: !String  -- ^ First name
+  , lastName  :: !String  -- ^ Last name
+  , age       :: !Int     -- ^ Age
   } deriving (Eq, Show)
 ```
 
@@ -317,10 +314,8 @@ Longer ones should be put on multiple lines:
 
 ```haskell
 toInt
-  :: Int
-  -- ^ Shift char by /n/
-  -> Char
-  -- ^ Char to convert to ASCII integer
+  :: Int  -- ^ Shift char by /n/
+  -> Char -- ^ Char to convert to ASCII integer
   -> Int
 ```
 
@@ -329,10 +324,8 @@ Multiple constraints can be added with a "tuple":
 ```haskell
 toInt
   :: (Num a, Show a)
-  => a
-  -- ^ Shift char by /n/
-  -> Char
-  -- ^ Char to convert to ASCII integer
+  => a    -- ^ Shift char by /n/
+  -> Char -- ^ Char to convert to ASCII integer
   -> Int
 ```
 
@@ -340,16 +333,11 @@ Many constraints need to be split across multiple lines too:
 
 ```haskell
 toInt
-  :: ( Num a
-     , Show a
-     , Foo a
-     , Bar a
-     , Fizz a
-     )
-  => a
-  -- ^ Shift char by /n/
-  -> Char
-  -- ^ Char to convert to ASCII integer
+  :: ( Num a, Ord a, Show a, Generic a, NFData a
+     , ShowX a, Undefined a
+     , Fizz a)
+  => a    -- ^ Shift char by /n/
+  -> Char -- ^ Char to convert to ASCII integer
   -> Int
 ```
 
@@ -358,11 +346,9 @@ toInt
 ```haskell
 toInt
   :: forall a
-   . (Num a , Show a)
-  => a
-  -- ^ Shift char by /n/
-  -> Char
-  -- ^ Char to convert to ASCII integer
+   . (Num a, Show a)
+  => a    -- ^ Shift char by /n/
+  -> Char -- ^ Char to convert to ASCII integer
   -> Int
 ```
 
@@ -370,15 +356,8 @@ If you have many type variables, many constraints, and many arguments, your func
 
 ```haskell
 doSomething
-  :: forall
-       clockDomain
-       resetDomain
-       resetKind
-       domainGatedness
-   . ( Undefined a
-     , Ord b
-     , NFData c
-     , Functor f )
+  :: forall clockDomain resetDomain resetKind domainGatedness
+   . (Undefined a, Ord b, NFData c, Functor f)
   => f a
   -> f b
   -> f c
@@ -420,12 +399,9 @@ Comment every top level function (particularly exported functions), and provide 
 -- state. Returns the number of bytes sent. Applications are
 -- responsible for ensuring that all data has been sent.
 send
-  :: Socket
-  -- ^ Connected socket
-  -> ByteString
-  -- ^ Data to send
-  -> IO Int
-  -- ^ Bytes sent
+  :: Socket      -- ^ Connected socket
+  -> ByteString  -- ^ Data to send
+  -> IO Int      -- ^ Bytes sent
 ```
 
 For functions the documentation should give enough information apply the function without looking at the function's definition.
@@ -435,10 +411,8 @@ Record example:
 ```haskell
 -- | Bla bla bla.
 data Person = Person
-  { age  :: !Int
-  -- ^ Age
-  , name :: !String
-  -- ^ First name
+  { age  :: !Int    -- ^ Age
+  , name :: !String -- ^ First name
   }
 ```
 
