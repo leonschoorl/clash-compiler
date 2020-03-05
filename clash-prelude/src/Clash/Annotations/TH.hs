@@ -1,16 +1,16 @@
 {-|
 
-This module can automatically generate TopEntity definitions from 'Clash.NamedTypes'
+This module can automatically generate TopEntity definitions from "Clash.NamedTypes"
 annotations. Annotations involving data/type families must be inspected for correctness.
 Not all cases can be handled with automatic generation due to the difficulty of type manipulation
 in template Haskell. In particular annotations _inside_ the following is unlikely to work:
 
-- Data/type family referencing other data/type families.
+- Data\/type family referencing other data\/type families.
 - Annotations inside recursive data types
 - Clock constraints other than a single HiddenClockResetEnable. (You can still
-  use arbitrary explicit clock/reset/enables!)
+  use arbitrary explicit clock\/reset\/enables!)
 
-See "Clash.Tests.TopEntityGeneration" for more examples.
+See [Clash.Tests.TopEntityGeneration](https://github.com/clash-lang/clash-compiler/blob/master/clash-prelude/tests/Clash/Tests/TopEntityGeneration.hs) for more examples.
 
 @
 import Clash.Annotations.TH
@@ -30,7 +30,7 @@ topEntity :: "tup1" ::: Signal System (Int, Bool)
 topEntity = undefined
 makeTopEntity 'topEntity
 -- ===>
---  {-# ANN topEntity Synthesize "topEntity3"
+--  {\-# ANN topEntity Synthesize "topEntity3"
 --     [ PortName "tup1"
 --     , PortName "tup2"
 --     , PortProduct "tup3" [PortName "int",PortName "bool"]
@@ -38,7 +38,7 @@ makeTopEntity 'topEntity
 --     , PortProduct "custom" [PortName "named1",PortName "named2"]
 --     ]
 --     (PortProduct "outTup" [PortName "outint",PortName "outbool"])
---     #-}
+--     #-\}
 @
 
 -}
