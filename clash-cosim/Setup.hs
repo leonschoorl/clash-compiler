@@ -3,53 +3,43 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
 
-import Control.Exception (IOException, SomeException, try, throwIO, catch)
+import Control.Exception (IOException, SomeException, try)
 import Control.Monad     (unless)
 import Data.Char         (isSpace)
-import Data.List         (isPrefixOf, isInfixOf, dropWhileEnd, intercalate)
+import Data.List         (isPrefixOf, dropWhileEnd, intercalate)
 import Data.Maybe        (fromJust)
 import NeatInterpolation (text)
-import System.IO         (stderr, hPutStrLn)
-import System.Directory  (removeFile)
 import System.Process    (callProcess, readProcessWithExitCode)
 import System.Environment (setEnv)
 import Text.Printf       (printf)
 
-
-
 import qualified Data.Text    as Text
-import qualified Data.Text.IO as Text
 
 import Distribution.Simple ( Args
                            , postClean
                            , postConf
                            , simpleUserHooks
                            , defaultMainWithHooks
-                           , UserHooks
                            )
 
-import Distribution.Simple.Setup          (ConfigFlags)
-import Distribution.Simple.Setup          (CleanFlags)
-import Distribution.PackageDescription    (PackageDescription, ccOptions)
-import Distribution.PackageDescription    (HookedBuildInfo, setupBuildInfo)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, configFlags)
-import Distribution.Simple.LocalBuildInfo
-import Distribution.PackageDescription
+import Distribution.Simple.Setup          (CleanFlags, ConfigFlags)
+import Distribution.PackageDescription    (PackageDescription, ccOptions, ldOptions, libBuildInfo, library)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, localPkgDescr)
 
 -- Blackbox generation
 import GHC.Exts (fromList)
-import Language.Haskell.TH
 import Data.Aeson (Value (Array, String, Object))
 import Data.Aeson.Encode.Pretty (encodePretty)
-import Text.Printf (printf)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 
-
+__COSIM_MAX_NUMBER_OF_ARGUMENTS__,__COSIM_MAX_NUMBER_OF_CLOCKS__ :: Int
 __COSIM_MAX_NUMBER_OF_ARGUMENTS__ = 16
 __COSIM_MAX_NUMBER_OF_CLOCKS__ = 1
+__COSIM_PRIMITIVE_PATH__ :: String
 __COSIM_PRIMITIVE_PATH__ = "src/prims/verilog/Clash_CoSim_CoSimInstances.json"
 
+main :: IO ()
 main = do
     setEnv "COSIM_MAX_NUMBER_OF_ARGUMENTS" $ show __COSIM_MAX_NUMBER_OF_ARGUMENTS__
     setEnv "COSIM_MAX_NUMBER_OF_CLOCKS" $ show __COSIM_MAX_NUMBER_OF_CLOCKS__
