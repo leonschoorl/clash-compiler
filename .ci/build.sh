@@ -12,6 +12,7 @@ mv cabal.project.local.disabled cabal.project.local
 cabal new-build all
 
 # Build with installed constraints for packages in global-db
+# shellcheck disable=SC2046
 echo cabal new-build $(ghc-pkg list --global --simple-output --names-only | sed 's/\([a-zA-Z0-9-]\{1,\}\) */--constraint="\1 installed" /g') all | sh
 
 # Check that documentation was generated succesfully
