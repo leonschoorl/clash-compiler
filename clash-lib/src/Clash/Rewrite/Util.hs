@@ -695,11 +695,7 @@ liftBinding (var@Id {varName = idName} ,e) = do
                                     (Binding
                                       newBodyId
                                       sp
-#if MIN_VERSION_ghc(8,4,1)
                                       NoUserInline
-#else
-                                      EmptyInlineSpec
-#endif
                                       newBody)
              -- Return the new binder
              return (var, newExpr)
@@ -989,11 +985,7 @@ specialise' _ _ _ _ctx _ (appE,args,ticks) (Left specArg) = do
     [] -> do (cf,sp) <- Lens.use curFun
              mkFunction (appendToName (varName cf) "_specF")
                         sp
-#if MIN_VERSION_ghc(8,4,1)
                         NoUserInline
-#else
-                        EmptyInlineSpec
-#endif
                         newBody
     (b:_) -> return (bindingId b)
   -- Create specialized argument

@@ -31,30 +31,18 @@ import           Clash.Netlist.BlackBox.Types   (HdlSyn (..))
 
 parseClashFlags :: IORef ClashOpts -> [Located String]
                 -> IO ([Located String]
-#if MIN_VERSION_ghc(8,4,1)
                       ,[Warn])
-#else
-                      ,[Located String])
-#endif
 parseClashFlags r = parseClashFlagsFull (flagsClash r)
 
 parseClashFlagsFull :: [Flag IO] -> [Located String]
                     -> IO ([Located String]
-#if MIN_VERSION_ghc(8,4,1)
                           ,[Warn])
-#else
-                          ,[Located String])
-#endif
 parseClashFlagsFull flagsAvialable args = do
   (leftovers,errs,warns) <- processArgs flagsAvialable args
 
   unless (null errs) $ throwGhcExceptionIO $
     errorsToGhcException . map (("on the commandline", ) .
-#if MIN_VERSION_ghc(8,4,1)
                                unLoc . errMsg)
-#else
-                               unLoc)
-#endif
                          $ errs
 
   return (leftovers, warns)
@@ -214,4 +202,3 @@ setUndefined r iM =
 
 setAggressiveXOpt :: IORef ClashOpts -> IO ()
 setAggressiveXOpt r = modifyIORef r (\c -> c { opt_aggressiveXOpt = True })
-

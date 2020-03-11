@@ -237,11 +237,7 @@ loadLocalModule hdl modName = do
   target <- GHC.guessTarget modName Nothing
   GHC.setTargets [target]
   modGraph <- GHC.depanal [] False
-#if MIN_VERSION_ghc(8,4,1)
   let modGraph' = GHC.mapMG disableOptimizationsFlags modGraph
-#else
-  let modGraph' = map disableOptimizationsFlags modGraph
-#endif
       -- 'topSortModuleGraph' ensures that modGraph2, and hence tidiedMods
       -- are in topological order, i.e. the root module is last.
       modGraph2 = Digraph.flattenSCCs (GHC.topSortModuleGraph True modGraph' Nothing)
@@ -273,11 +269,7 @@ loadLocalModule hdl modName = do
     tcMod' <- GHC.loadModule tcMod
     dsMod <- fmap GHC.coreModule $ GHC.desugarModule tcMod'
     hsc_env <- GHC.getSession
-#if MIN_VERSION_ghc(8,4,1)
     simpl_guts <- MonadUtils.liftIO $ HscMain.hscSimplify hsc_env [] dsMod
-#else
-    simpl_guts <- MonadUtils.liftIO $ HscMain.hscSimplify hsc_env dsMod
-#endif
     checkForInvalidPrelude simpl_guts
     (tidy_guts,_) <- MonadUtils.liftIO $ TidyPgm.tidyProgram hsc_env simpl_guts
     let pgm        = HscTypes.cg_binds tidy_guts
@@ -443,16 +435,10 @@ makeRecursiveGroups
       :: (CoreSyn.CoreBndr,CoreSyn.CoreExpr)
       -> Digraph.Node Unique.Unique (CoreSyn.CoreBndr,CoreSyn.CoreExpr)
     makeNode (b,e) =
-#if MIN_VERSION_ghc(8,4,1)
       Digraph.DigraphNode
         (b,e)
         (Var.varUnique b)
         (UniqSet.nonDetKeysUniqSet (CoreFVs.exprFreeIds e))
-#else
-      ((b,e)
-      ,Var.varUnique b
-      ,UniqSet.nonDetKeysUniqSet (CoreFVs.exprFreeIds e))
-#endif
 
     makeBind
       :: Digraph.SCC (CoreSyn.CoreBndr,CoreSyn.CoreExpr)
