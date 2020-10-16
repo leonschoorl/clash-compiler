@@ -324,7 +324,8 @@ renderElem
   => BlackBoxContext
   -> Element
   -> State backend (Int -> Text)
-renderElem b (Component (Decl n subN (l:ls))) = do
+renderElem b (Component (Decl n _subN (l:ls))) = do
+  let subN = 0 -- HACK
   (o,oTy,_) <- idToExpr <$> combineM (lineToIdentifier b) (return . lineToType b) l
   is <- mapM (fmap idToExpr . combineM (lineToIdentifier b) (return . lineToType b)) ls
   let func0 = IntMap.lookup n (bbFunctions b)
